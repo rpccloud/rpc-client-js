@@ -1,0 +1,39 @@
+{
+  "name": "rpc-client-js",
+  "version": "0.0.1",
+  "description": "rpc client for javascript and typescript",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "scripts": {
+    "lint": "tslint --project ./tsconfig.json",
+    "precompile": "npm run lint",
+    "compile": "tsc",
+    "precoverage": "npm run compile",
+    "coverage": "jest --env=jsdom --colors --coverage test",
+    "showcoverage": "npm run coverage",
+    "postshowcoverage": "open ./coverage/lcov-report/index.html",
+    "prepublish": "npm run compile"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rpccloud/web.git"
+  },
+  "keywords": [
+    "rpc",
+    "rpccloud",
+    "web",
+    "rpccloud-web"
+  ],
+  "author": "tianshuo",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rpccloud/web/issues"
+  },
+  "homepage": "https://github.com/rpccloud/web#readme",
+  "devDependencies": {
+    "@types/jest": "26.0.20",
+    "jest": "26.6.3",
+    "ts-jest": "26.5.0",
+    "typescript": "4.1.3"
+  }
+}
