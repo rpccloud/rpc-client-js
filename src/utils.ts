@@ -190,7 +190,6 @@ export function convertOrdinalToString(n: number): string {
     }
 }
 
-
 export function getTimeNowMS(): number {
     return new Date().getTime()
 }
