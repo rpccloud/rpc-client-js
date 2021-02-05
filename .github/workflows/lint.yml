@@ -1,4 +1,4 @@
-name: Test
+name: Lint
 
 on:
     push:
@@ -6,7 +6,7 @@ on:
             - master
 
 jobs:
-    test:
+    lint:
         strategy:
             matrix:
                 node-version: [ 12.x, 14.x ]
@@ -27,12 +27,4 @@ jobs:
                 run: npm install
 
             -   name: Test and generate coverage report
-                run: npm run coverage
-
-            -   name: Upload coverage to Codecov
-                uses: codecov/codecov-action@v1
-                with:
-                    file: ./coverage/coverage-final.json
-                    flags: unittests
-                    name: codecov-umbrella
-                    fail_ci_if_error: true
+                run: npm run lint
