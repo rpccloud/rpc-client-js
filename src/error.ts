@@ -1,75 +1,88 @@
+export enum ErrorType {
+    Config = 1,
+    Net = 2,
+    Action = 3,
+    Develop = 4,
+    Kernel = 5,
+    Security = 6,
+}
+
+export enum ErrorLevel {
+    Warn = 1,
+    Error = 2,
+    Fatal = 3,
+}
+
+export function defineError(
+    kind: ErrorType,
+    index: number,
+    level: ErrorLevel,
+    message: string,
+): RPCError {
+    return new RPCError((kind << 20) | (level << 16) | index, message)
+}
 
 export class RPCError {
-  public static readonly KindNone: number = 0;
-  public static readonly KindProtocol: number = 1;
-  public static readonly KindTransport: number = 2;
-  public static readonly KindReply: number = 3;
-  public static readonly KindReplyPanic: number = 4;
-  public static readonly KindRuntimePanic: number = 5;
-  public static readonly KindKernelPanic: number = 6;
-  public static readonly KindSecurityLimit: number = 7;
+    private readonly code: number;
+    private readonly message: string;
 
-  public static newProtocolError(message: string): RPCError {
-      return new RPCError(RPCError.KindProtocol, message, "")
-  }
+    public constructor(code: number, message: string) {
+        this.code = code
+        this.message = message
+    }
 
-  public static newTransportError(message: string): RPCError {
-      return new RPCError(RPCError.KindTransport, message, "")
-  }
+    public getCode(): number {
+        return this.code
+    }
 
-  public static newReplyError(message: string): RPCError {
-      return new RPCError(RPCError.KindReply, message, "")
-  }
+    public getMessage(): string {
+        return this.message
+    }
 
-  public static newReplyPanic(message: string): RPCError {
-      return new RPCError(RPCError.KindReplyPanic, message, "")
-  }
+    public addDebug(debug: string): RPCError {
+        if (!this.message) {
+            return new RPCError(this.code, debug)
+        } else {
+            return new RPCError(this.code, this.message + "\n" + debug)
+        }
+    }
 
-  public static newRuntimePanic(message: string): RPCError {
-      return new RPCError(RPCError.KindRuntimePanic, message, "")
-  }
+    private getErrorTypeString(): string {
+        switch ((this.code >> 20) & 0x0F) {
+        case ErrorType.Config:
+            return "Config"
+        case ErrorType.Net:
+            return "Net"
+        case ErrorType.Action:
+            return "Action"
+        case ErrorType.Develop:
+            return "Develop"
+        case ErrorType.Kernel:
+            return "Kernel"
+        case ErrorType.Security:
+            return "Security"
+        default:
+            return ""
+        }
+    }
 
-  public static newKernelPanic(message: string): RPCError {
-      return new RPCError(RPCError.KindKernelPanic, message, "")
-  }
+    private getErrorLevelString(): string {
+        switch ((this.code >> 16) & 0x0F) {
+        case ErrorLevel.Warn:
+            return "Warn"
+        case ErrorLevel.Error:
+            return "Error"
+        case ErrorLevel.Fatal:
+            return "Fatal"
+        default:
+            return ""
+        }
+    }
 
-  public static newSecurityLimitError(message: string): RPCError {
-      return new RPCError(RPCError.KindSecurityLimit, message, "")
-  }
-
-  private readonly kind: number;
-  private readonly message: string | null;
-  private debug: string | null;
-
-  public constructor(
-      kind: number, message: string | null, debug: string | null) {
-      this.kind = kind
-      this.message = message
-      this.debug = debug
-  }
-
-  public getKind(): number {
-      return this.kind
-  }
-
-  public getMessage(): string | null {
-      return this.message
-  }
-
-  public getDebug(): string | null {
-      return this.debug
-  }
-
-  public addDebug(debug: string | null): RPCError {
-      if (debug != null && debug != "") {
-          if (this.debug == null || this.debug == "") {
-              this.debug = debug
-          } else {
-              this.debug += "\n"
-              this.debug += debug
-          }
-      }
-
-      return this
-  }
+    public toString(): string {
+        return this.getErrorTypeString() +
+            this.getErrorLevelString() +
+            "[" + (this.code & 0xFFFF) + "]: " +
+            this.message
+    }
 }

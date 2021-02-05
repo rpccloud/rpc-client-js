@@ -37,7 +37,7 @@ describe("deferred tests", () => {
     })
 
     test("Deferred_doReject", async () => {
-        const err = new RPCError(RPCError.KindReply, "message", "debug")
+        const err = new RPCError(12, "message")
         const deferred1 = new Deferred()
         expect(deferred1.doReject(err)).toBe(true)
         try {
