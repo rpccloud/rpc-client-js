@@ -39,7 +39,7 @@ describe("deferred tests", () => {
     test("Deferred_doReject", async () => {
         const err = new RPCError(12, "message")
         const deferred1 = new Deferred()
-        expect(deferred1.doReject(err)).toBe(true)
+        expect(deferred1.doReject(err)).toStrictEqual(true)
         try {
             await deferred1.promise
             expect(true).toStrictEqual(false)
@@ -49,7 +49,7 @@ describe("deferred tests", () => {
 
         const deferred2 = new Deferred()
         setTimeout(() => {
-            expect(deferred2.doReject(err)).toBe(true)
+            expect(deferred2.doReject(err)).toStrictEqual(true)
         }, 50)
         try {
             await deferred2.promise
@@ -59,6 +59,6 @@ describe("deferred tests", () => {
         }
 
         // deferred is done
-        expect(deferred1.doReject(err)).toBe(false)
+        expect(deferred1.doReject(err)).toStrictEqual(false)
     })
 })

@@ -34,7 +34,7 @@ export class RPCInt64 {
 
             // value < 0 and is a safety integer
             if (bytes[7] === 127 && (bytes[6] & 0xE0) === 0xE0) {
-                const v: number = readNumberFromComplementCode(bytes)
+                const v = readNumberFromComplementCode(bytes)
                 // v >= -9007199254740991
                 if (v < 9007199254740991) {
                     return new RPCInt64(-v - 1)

@@ -1,42 +1,53 @@
-import { RPCInt64, RPCUint64 } from "./types"
+import {
+    RPCFloat64,
+    RPCInt64,
+    RPCUint64,
+    toRPCFloat64,
+    toRPCInt64,
+    toRPCUint64
+} from "./types"
 
 describe("RPCInt64 tests", () => {
-    test("RPCInt64_fromBytes", () => {
+    test("toRPCInt64", () => {
+        expect(toRPCInt64(5)).toStrictEqual(new RPCInt64(5))
+    })
+
+    test("RPCInt64.fromBytes", () => {
         const v1: RPCInt64 = RPCInt64.fromBytes(new Uint8Array([
             0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE0, 0x7F,
         ]))
-        expect(v1.toNumber()).toBe(-9007199254740991)
+        expect(v1.toNumber()).toStrictEqual(-9007199254740991)
 
         const v2: RPCInt64 = RPCInt64.fromBytes(new Uint8Array([
             0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE0, 0x7F,
         ]))
-        expect(v2.toNumber()).toBe(-9007199254740990)
+        expect(v2.toNumber()).toStrictEqual(-9007199254740990)
 
         const v3: RPCInt64 = RPCInt64.fromBytes(new Uint8Array([
             0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF, 0xFF, 0x7F,
         ]))
-        expect(v3.toNumber()).toBe(-2147483649)
+        expect(v3.toNumber()).toStrictEqual(-2147483649)
 
         const v4: RPCInt64 = RPCInt64.fromBytes(new Uint8Array([
             0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x80,
         ]))
-        expect(v4.toNumber()).toBe(2147483648)
+        expect(v4.toNumber()).toStrictEqual(2147483648)
 
         const v5: RPCInt64 = RPCInt64.fromBytes(new Uint8Array([
             0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x1F, 0x80,
         ]))
-        expect(v5.toNumber()).toBe(9007199254740990)
+        expect(v5.toNumber()).toStrictEqual(9007199254740990)
 
         const v6: RPCInt64 = RPCInt64.fromBytes(new Uint8Array([
             0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x1F, 0x80,
         ]))
-        expect(v6.toNumber()).toBe(9007199254740991)
+        expect(v6.toNumber()).toStrictEqual(9007199254740991)
 
         const notSafetyInt1: RPCInt64 = RPCInt64.fromBytes(
             new Uint8Array([
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             ]))
-        expect(isNaN(notSafetyInt1.toNumber())).toBe(true)
+        expect(isNaN(notSafetyInt1.toNumber())).toStrictEqual(true)
         expect(notSafetyInt1.getBytes())
             .toStrictEqual(new Uint8Array([
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -46,7 +57,7 @@ describe("RPCInt64 tests", () => {
             new Uint8Array([
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE0, 0x7F,
             ]))
-        expect(isNaN(notSafetyInt2.toNumber())).toBe(true)
+        expect(isNaN(notSafetyInt2.toNumber())).toStrictEqual(true)
         expect(notSafetyInt2.getBytes())
             .toStrictEqual(new Uint8Array([
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE0, 0x7F,
@@ -56,7 +67,7 @@ describe("RPCInt64 tests", () => {
             new Uint8Array([
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x80,
             ]))
-        expect(isNaN(notSafetyInt3.toNumber())).toBe(true)
+        expect(isNaN(notSafetyInt3.toNumber())).toStrictEqual(true)
         expect(notSafetyInt3.getBytes())
             .toStrictEqual(new Uint8Array([
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x80,
@@ -66,7 +77,7 @@ describe("RPCInt64 tests", () => {
             new Uint8Array([
                 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
             ]))
-        expect(isNaN(notSafetyInt4.toNumber())).toBe(true)
+        expect(isNaN(notSafetyInt4.toNumber())).toStrictEqual(true)
         expect(notSafetyInt4.getBytes())
             .toStrictEqual(new Uint8Array([
                 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -76,33 +87,37 @@ describe("RPCInt64 tests", () => {
             new Uint8Array([
                 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
             ]))
-        expect(isNaN(bugInt.toNumber())).toBe(true)
+        expect(isNaN(bugInt.toNumber())).toStrictEqual(true)
         expect(bugInt.getBytes()).toStrictEqual(null)
     })
 })
 
 describe("RPCUint64 tests", () => {
-    test("RPCUint64_fromBytes", () => {
+    test("toRPCUint64", () => {
+        expect(toRPCUint64(5)).toStrictEqual(new RPCUint64(5))
+    })
+
+    test("RPCUint64.fromBytes", () => {
         const v1: RPCUint64 = RPCUint64.fromBytes(new Uint8Array([
             0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
         ]))
-        expect(v1.toNumber()).toBe(4294967296)
+        expect(v1.toNumber()).toStrictEqual(4294967296)
 
         const v2: RPCUint64 = RPCUint64.fromBytes(new Uint8Array([
             0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x1F, 0x00,
         ]))
-        expect(v2.toNumber()).toBe(9007199254740990)
+        expect(v2.toNumber()).toStrictEqual(9007199254740990)
 
         const v3: RPCUint64 = RPCUint64.fromBytes(new Uint8Array([
             0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x1F, 0x00,
         ]))
-        expect(v3.toNumber()).toBe(9007199254740991)
+        expect(v3.toNumber()).toStrictEqual(9007199254740991)
 
         const notSafetyUint1: RPCUint64 = RPCUint64.fromBytes(
             new Uint8Array([
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00,
             ]))
-        expect(isNaN(notSafetyUint1.toNumber())).toBe(true)
+        expect(isNaN(notSafetyUint1.toNumber())).toStrictEqual(true)
         expect(notSafetyUint1.getBytes())
             .toStrictEqual(new Uint8Array([
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00,
@@ -112,7 +127,7 @@ describe("RPCUint64 tests", () => {
             new Uint8Array([
                 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
             ]))
-        expect(isNaN(notSafetyUint2.toNumber())).toBe(true)
+        expect(isNaN(notSafetyUint2.toNumber())).toStrictEqual(true)
         expect(notSafetyUint2.getBytes())
             .toStrictEqual(new Uint8Array([
                 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -122,7 +137,21 @@ describe("RPCUint64 tests", () => {
             new Uint8Array([
                 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
             ]))
-        expect(isNaN(bugUint.toNumber())).toBe(true)
+        expect(isNaN(bugUint.toNumber())).toStrictEqual(true)
         expect(bugUint.getBytes()).toStrictEqual(null)
+    })
+})
+
+describe("RPCFloat64 tests", () => {
+    test("toRPCFloat64", () => {
+        expect(toRPCFloat64(5.1)).toStrictEqual(new RPCFloat64(5.1))
+    })
+
+    test("new RPCFloat64", () => {
+        expect(new RPCFloat64(5.1)).toStrictEqual(toRPCFloat64(5.1))
+    })
+
+    test("toNumber", () => {
+        expect(new RPCFloat64(5.1).toNumber()).toStrictEqual(5.1)
     })
 })
