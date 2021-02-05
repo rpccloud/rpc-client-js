@@ -2,12 +2,12 @@ import {Deferred} from "./deferred"
 import {RPCAny} from "./types"
 
 function pad2(num: number): string {
-    const norm: number = Math.floor(Math.abs(num))
+    const norm = Math.floor(Math.abs(num))
     return (norm < 10 ? "0" : "") + norm.toString(10)
 }
 
 function pad3(num: number): string {
-    const norm: number = Math.floor(Math.abs(num))
+    const norm = Math.floor(Math.abs(num))
     if (norm < 10) {
         return "00" + norm.toString(10)
     } else if (norm < 100) {
@@ -18,7 +18,7 @@ function pad3(num: number): string {
 }
 
 function pad4(num: number): string {
-    const norm: number = Math.floor(Math.abs(num))
+    const norm = Math.floor(Math.abs(num))
     if (norm < 10) {
         return "000" + norm.toString(10)
     } else if (norm < 100) {
@@ -31,13 +31,13 @@ function pad4(num: number): string {
 }
 
 export function stringToUTF8(v: string): Array<number> {
-    const ret: Array<number> = []
+    const ret = new Array<number>()
     let strPos = 0
     let ch: number
 
     while ((ch = v.charCodeAt(strPos++)) > 0) {
         if (ch >= 0xD800 && ch <= 0xDBFF) {
-            const low: number = v.charCodeAt(strPos++)
+            const low = v.charCodeAt(strPos++)
             ch = (((ch & 0x3FF) << 10) | (low & 0x3FF)) + 65536
         }
         if (ch < 128) {
@@ -69,17 +69,17 @@ export function utf8ToString(
         return ["", false]
     }
 
-    const retArray: Array<number> = []
-    let idx: number = (start === undefined) ? 0 : start
-    const readEnd: number = (end === undefined) ? v.byteLength : end
+    const retArray = new Array<number>()
+    let idx = (start === undefined) ? 0 : start
+    const readEnd = (end === undefined) ? v.byteLength : end
     if (idx < 0 || readEnd > v.byteLength || idx >= readEnd) {
         return ["", false]
     }
 
-    const byteLen: number = v.byteLength
+    const byteLen = v.byteLength
 
     while (idx < readEnd) {
-        const ch: number = v[idx]
+        const ch = v[idx]
 
         if (ch < 128) {
             idx++
@@ -89,9 +89,7 @@ export function utf8ToString(
                 if ((v[idx + 1] & 0xC0) !== 0x80) {
                     return ["", false]
                 }
-                const unicode: number =
-                    ((ch & 0x1F) << 6) |
-                    (v[idx + 1] & 0x3F)
+                const unicode = ((ch & 0x1F) << 6) | (v[idx + 1] & 0x3F)
                 idx += 2
                 if (unicode >= 0x0080 && unicode <= 0x07FF) {
                     retArray.push(unicode)
@@ -109,7 +107,7 @@ export function utf8ToString(
                 ) {
                     return ["", false]
                 }
-                const unicode: number =
+                const unicode =
                     ((ch & 0x0F) << 12) |
                     ((v[idx + 1] & 0x3F) << 6) |
                     (v[idx + 2] & 0x3F)
@@ -133,7 +131,7 @@ export function utf8ToString(
                 ) {
                     return ["", false]
                 }
-                const unicode: number =
+                const unicode =
                     ((ch & 0x07) << 18) |
                     ((v[idx + 1] & 0x3F) << 12) |
                     ((v[idx + 2] & 0x3F) << 6) |
@@ -158,9 +156,9 @@ export function convertToIsoDateString(date: Date): string {
     if (date === null || date === undefined) {
         return ""
     }
-    const tzo: number = -date.getTimezoneOffset()
-    const dif: string = tzo >= 0 ? "+" : "-"
-    let year: number = date.getFullYear()
+    const tzo = -date.getTimezoneOffset()
+    const dif = tzo >= 0 ? "+" : "-"
+    let year = date.getFullYear()
     if (year > 9999) {
         year = 9999
     }
@@ -202,7 +200,7 @@ export function getProtocol(urlString: string): string {
         return ""
     }
 
-    const idx: number = urlString.indexOf(":")
+    const idx = urlString.indexOf(":")
     if (idx > 0) {
         return urlString.substr(0, idx)
     } else {

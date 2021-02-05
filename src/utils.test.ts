@@ -1,4 +1,9 @@
-import { stringToUTF8, convertToIsoDateString, utf8ToString } from "./utils"
+import {
+    stringToUTF8,
+    convertToIsoDateString,
+    utf8ToString,
+    convertOrdinalToString, getTimeNowMS, getProtocol, sleep, returnAsync
+} from "./utils"
 
 describe("utils tests", () => {
     test("stringToUTF8_utf8ToString", () => {
@@ -108,7 +113,7 @@ describe("utils tests", () => {
     })
 
     test("toIsoDateString", () => {
-        const start: Date = new Date("1901-01-01T00:00:00.000Z")
+        const start = new Date("1901-01-01T00:00:00.000Z")
 
         for (let i = 0; i < 10000; i++) {
             expect(new Date(convertToIsoDateString(start))).toStrictEqual(start)
@@ -118,25 +123,65 @@ describe("utils tests", () => {
         expect(convertToIsoDateString(null as never)).toStrictEqual("")
         expect(convertToIsoDateString(undefined as never)).toStrictEqual("")
 
-        const date1: Date = new Date("2000-01-01T00:00:00.000Z")
+        const date1 = new Date("2000-01-01T00:00:00.000Z")
         date1.setFullYear(date1.getFullYear() + 10000)
         expect(new Date(convertToIsoDateString(date1)).toISOString())
             .toStrictEqual("9999-01-01T00:00:00.000Z")
 
-        const date2: Date = new Date("2009-11-01T10:00:00.009Z")
+        const date2 = new Date("2009-11-01T10:00:00.009Z")
         date2.setFullYear(date2.getFullYear() - 2000)
         expect(new Date(convertToIsoDateString(date2)).toISOString())
             .toContain("0009-11-01")
 
-        const date3: Date = new Date("2019-11-01T10:00:00.019Z")
+        const date3 = new Date("2019-11-01T10:00:00.019Z")
         date3.setFullYear(date3.getFullYear() - 2000)
         expect(new Date(convertToIsoDateString(date3)).toISOString())
             .toContain("0019-11-01")
 
-        const date4: Date = new Date("2319-11-01T10:00:00.319Z")
+        const date4 = new Date("2319-11-01T10:00:00.319Z")
         date4.setFullYear(date4.getFullYear() - 2000)
         expect(new Date(convertToIsoDateString(date4)).toISOString())
             .toContain("0319-11-01")
+    })
+
+    test("convertOrdinalToString", () => {
+        expect(convertOrdinalToString(null as never)).toStrictEqual("")
+        expect(convertOrdinalToString(undefined as never)).toStrictEqual("")
+        expect(convertOrdinalToString(1.3)).toStrictEqual("")
+        expect(convertOrdinalToString(-1)).toStrictEqual("")
+        expect(convertOrdinalToString(0)).toStrictEqual("")
+        expect(convertOrdinalToString(1)).toStrictEqual("1st")
+        expect(convertOrdinalToString(2)).toStrictEqual("2nd")
+        expect(convertOrdinalToString(3)).toStrictEqual("3rd")
+        expect(convertOrdinalToString(4)).toStrictEqual("4th")
+    })
+
+    test("getTimeNowMS", () => {
+        const nowMS = new Date().getTime()
+        expect(Math.abs(nowMS - getTimeNowMS()) < 100)
+    })
+
+    test("getProtocol", () => {
+        expect(getProtocol(null as never)).toStrictEqual("")
+        expect(getProtocol(undefined as never)).toStrictEqual("")
+        expect(getProtocol("hello")).toStrictEqual("")
+        expect(getProtocol("http://127.0.0.1")).toStrictEqual("http")
+        expect(getProtocol("https://127.0.0.1")).toStrictEqual("https")
+        expect(getProtocol("ws://127.0.0.1:8080")).toStrictEqual("ws")
+        expect(getProtocol("wss://127.0.0.1")).toStrictEqual("wss")
+        expect(getProtocol("tcp://127.0.0.1")).toStrictEqual("tcp")
+        expect(getProtocol("udp://127.0.0.1:8080")).toStrictEqual("udp")
+    })
+
+    test("sleep", async () => {
+        const start = getTimeNowMS()
+        expect(await sleep(300)).toStrictEqual(true)
+        expect(Math.abs(getTimeNowMS() - start - 300) < 100).toStrictEqual(true)
+    })
+
+    test("returnAsync", async () => {
+        const promise = returnAsync(12345)
+        expect(await promise).toStrictEqual(12345)
     })
 })
 
