@@ -1,4 +1,3 @@
-/* tslint:disable: all */
 export class Ieee754 {
     public static read(
         buf: Uint8Array,
