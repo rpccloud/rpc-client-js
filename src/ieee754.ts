@@ -20,15 +20,15 @@ export class Ieee754 {
         e = s & ((1 << (-nBits)) - 1)
         s >>= (-nBits)
         nBits += eLen
-        // eslint-disable-next-line no-empty
-        for (; nBits > 0; e = (e * 256) + buf[offset + i], i += d, nBits -= 8) {
+        for (; nBits > 0; i += d, nBits -= 8) {
+            e = (e * 256) + buf[offset + i]
         }
 
         m = e & ((1 << (-nBits)) - 1)
         e >>= (-nBits)
         nBits += mLen
-        // eslint-disable-next-line no-empty
-        for (; nBits > 0; m = (m * 256) + buf[offset + i], i += d, nBits -= 8) {
+        for (; nBits > 0; i += d, nBits -= 8) {
+            m = (m * 256) + buf[offset + i]
         }
 
         if (e === 0) {
@@ -92,14 +92,14 @@ export class Ieee754 {
             }
         }
 
-        // eslint-disable-next-line no-empty
-        for (; mLen >= 8; buf[offset + i] = m & 0xff, i += d, m /= 256, mLen -= 8) {
+        for (; mLen >= 8; i += d, m /= 256, mLen -= 8) {
+            buf[offset + i] = m & 0xff
         }
 
         e = (e << mLen) | m
         eLen += mLen
-        // eslint-disable-next-line no-empty
-        for (; eLen > 0; buf[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8) {
+        for (; eLen > 0;  i += d, e /= 256, eLen -= 8) {
+            buf[offset + i] = e & 0xff
         }
 
         buf[offset + i - d] |= s * 128
