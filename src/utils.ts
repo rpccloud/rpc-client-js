@@ -30,34 +30,43 @@ function pad4(num: number): string {
     }
 }
 
-export function stringToUTF8(v: string): Array<number> {
-    const ret = new Array<number>()
-    let strPos = 0
+export function stringToUTF8(v: string): Uint8Array {
+    let buffer = new Uint8Array(v.length)
     let ch: number
+    let strPos = 0
+    let bufPos = 0
 
     while ((ch = v.charCodeAt(strPos++)) > 0) {
+        if (bufPos - buffer.byteLength < 4) {
+            const newBuffer = new Uint8Array(buffer.byteLength * 2)
+            newBuffer.set(buffer, 0)
+            buffer = newBuffer
+        }
+
         if (ch >= 0xD800 && ch <= 0xDBFF) {
             const low = v.charCodeAt(strPos++)
             ch = (((ch & 0x3FF) << 10) | (low & 0x3FF)) + 65536
         }
+
+
         if (ch < 128) {
-            ret.push(ch)
+            buffer[bufPos++] = ch
         } else if (ch < 2048) {
-            ret.push(((ch >>> 6) & 0xFF) | 0xC0)
-            ret.push((ch & 0x3F) | 0x80)
+            buffer[bufPos++] = ((ch >>> 6) & 0xFF) | 0xC0
+            buffer[bufPos++] = (ch & 0x3F) | 0x80
         } else if (ch < 65536) {
-            ret.push(((ch >>> 12) & 0xFF) | 0xE0)
-            ret.push(((ch >>> 6) & 0x3F) | 0x80)
-            ret.push((ch & 0x3F) | 0x80)
+            buffer[bufPos++] = ((ch >>> 12) & 0xFF) | 0xE0
+            buffer[bufPos++] = ((ch >>> 6) & 0x3F) | 0x80
+            buffer[bufPos++] = (ch & 0x3F) | 0x80
         } else {
-            ret.push(((ch >>> 18) & 0xFF) | 0xF0)
-            ret.push(((ch >>> 12) & 0x3F) | 0x80)
-            ret.push(((ch >>> 6) & 0x3F) | 0x80)
-            ret.push((ch & 0x3F) | 0x80)
+            buffer[bufPos++] = ((ch >>> 18) & 0xFF) | 0xF0
+            buffer[bufPos++] = ((ch >>> 12) & 0x3F) | 0x80
+            buffer[bufPos++] = ((ch >>> 6) & 0x3F) | 0x80
+            buffer[bufPos++] = (ch & 0x3F) | 0x80
         }
     }
 
-    return ret
+    return buffer.slice(0, bufPos)
 }
 
 export function utf8ToString(
