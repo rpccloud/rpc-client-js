@@ -200,9 +200,9 @@ describe("logger tests", () => {
 
         logger.fatal("")
         expect((console.log as any).mock.calls.length).toStrictEqual(5)
-        expect((console.log as any).mock.calls[4][0]).toContain("Fatal");
+        expect((console.log as any).mock.calls[4][0]).toContain("Fatal")
 
-        (logger as any).log(33, " Debug: ", "message")
+        logger.log(33, " Debug: ", "message")
         expect((console.log as any).mock.calls.length).toStrictEqual(6)
         /* eslint-enable @typescript-eslint/no-explicit-any */
     })

@@ -23,8 +23,8 @@ export function defineError(
 }
 
 export class RPCError {
-    private readonly code: number;
-    private readonly message: string;
+    private readonly code: number
+    private readonly message: string
 
     public constructor(code: number, message: string) {
         this.code = code

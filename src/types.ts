@@ -18,7 +18,7 @@ function readNumberFromComplementCode(bytes: Uint8Array): number {
         (~bytes[0] & 0xFF)
 }
 
-export type RPCBool = boolean;
+export type RPCBool = boolean
 
 export function toRPCInt64(v: number): RPCInt64 {
     return new RPCInt64(v)
