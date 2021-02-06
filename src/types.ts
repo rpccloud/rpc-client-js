@@ -47,8 +47,8 @@ export class RPCInt64 {
         }
     }
 
-    private readonly value: number;
-    private bytes: Uint8Array | null;
+    private readonly value: number
+    private bytes: Uint8Array | null
 
     public constructor(v: number) {
         this.value = Number.isSafeInteger(v) ? v : NaN
@@ -90,8 +90,8 @@ export class RPCUint64 {
         }
     }
 
-    private readonly value: number;
-    private bytes: Uint8Array | null;
+    private readonly value: number
+    private bytes: Uint8Array | null
 
     public constructor(v: number) {
         this.value = (Number.isSafeInteger(v) && v >= 0) ? v : NaN
@@ -120,7 +120,7 @@ export function toRPCFloat64(v: number): RPCFloat64 {
 }
 
 export class RPCFloat64 {
-    private readonly value: number;
+    private readonly value: number
 
     public constructor(v: number) {
         this.value = v
@@ -131,13 +131,13 @@ export class RPCFloat64 {
     }
 }
 
-export type RPCString = string;
+export type RPCString = string
 
-export type RPCBytes = Uint8Array;
+export type RPCBytes = Uint8Array
 
-export type RPCArray = Array<RPCAny>;
+export type RPCArray = Array<RPCAny>
 
-export type RPCMap = Map<string, RPCAny>;
+export type RPCMap = Map<string, RPCAny>
 
 export type RPCAny =
     RPCBool |
@@ -148,4 +148,4 @@ export type RPCAny =
     RPCBytes |
     RPCArray |
     RPCMap |
-    null;
+    null

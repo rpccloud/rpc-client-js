@@ -13,16 +13,16 @@ const logMaskWarn = 4
 const logMaskInfo = 8
 const logMaskDebug = 16
 
-export type CallbackFunc = ((msg: string) => void) | null;
+export type CallbackFunc = ((msg: string) => void) | null
 
 export class LogSubscription {
     private id: number
-    private logger: Logger | null;
-    public onDebug: CallbackFunc = null;
-    public onInfo: CallbackFunc = null;
-    public onWarn: CallbackFunc = null;
-    public onError: CallbackFunc = null;
-    public onFatal: CallbackFunc = null;
+    private logger: Logger | null
+    public onDebug: CallbackFunc = null
+    public onInfo: CallbackFunc = null
+    public onWarn: CallbackFunc = null
+    public onError: CallbackFunc = null
+    public onFatal: CallbackFunc = null
 
     public constructor(id: number, logger: Logger) {
         this.id = id
@@ -52,9 +52,9 @@ export class LogSubscription {
 }
 
 export class Logger {
-    private level: number;
-    private readonly subscriptions: Array<LogSubscription>;
-    private seed: number;
+    private level: number
+    private readonly subscriptions: Array<LogSubscription>
+    private seed: number
 
     public constructor() {
         this.level = LogLevelAll
