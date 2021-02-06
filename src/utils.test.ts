@@ -15,6 +15,13 @@ describe("utils tests", () => {
         ])
 
         expect(utf8ToString(new Uint8Array(stringToUTF8(
+            "hello world",
+        )))).toStrictEqual([
+            "hello world",
+            true,
+        ])
+
+        expect(utf8ToString(new Uint8Array(stringToUTF8(
             "测试",
         )))).toStrictEqual([
             "测试",
