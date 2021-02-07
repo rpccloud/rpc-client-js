@@ -80,7 +80,7 @@ export class RPCStream {
 
     private enlarge(size: number): void {
         if (size > this.data.byteLength) {
-            const newData: Uint8Array = new Uint8Array(size + 1024)
+            const newData = new Uint8Array(size + 1024)
             newData.set(this.data, 0)
             this.data = newData
         }
@@ -110,9 +110,9 @@ export class RPCStream {
 
     private readNBytes(n: number): Uint8Array {
         if (n > 0 && Number.isSafeInteger(n)) {
-            const end: number = this.readPos + n
+            const end = this.readPos + n
             if (end <= this.writePos) {
-                const ret: Uint8Array = this.data.slice(this.readPos, end)
+                const ret = this.data.slice(this.readPos, end)
                 this.readPos = end
                 return ret
             }
@@ -207,7 +207,7 @@ export class RPCStream {
     }
 
     public getCallbackID(): number {
-        const data: Uint8Array = this.data.slice(
+        const data = this.data.slice(
             RPCStream.streamPosCallbackID,
             RPCStream.streamPosCallbackID + 8,
         )
@@ -258,7 +258,7 @@ export class RPCStream {
             return RPCStream.StreamWriteUnsupportedValue
         }
 
-        const v: number = value.toNumber()
+        const v = value.toNumber()
         if (v === 0) {
             this.putByte(4)
             return RPCStream.StreamWriteOK
@@ -324,7 +324,7 @@ export class RPCStream {
             }
             return RPCStream.StreamWriteOK
         } else {
-            const bytes: Uint8Array | null = value.getBytes()
+            const bytes = value.getBytes()
             if (bytes != null && bytes.byteLength === 8) {
                 this.putByte(8)
                 this.putBytes(bytes)
@@ -364,7 +364,7 @@ export class RPCStream {
             this.writeUint64Unsafe(v)
             return RPCStream.StreamWriteOK
         } else {
-            const bytes: Uint8Array | null = value.getBytes()
+            const bytes = value.getBytes()
             if (bytes != null && bytes.byteLength == 8) {
                 this.putByte(11)
                 this.putBytes(bytes)
@@ -446,13 +446,13 @@ export class RPCStream {
             return RPCStream.StreamWriteUnsupportedValue
         }
 
-        const arrLen: number = v.length
+        const arrLen = v.length
         if (arrLen === 0) {
             this.putByte(64)
             return RPCStream.StreamWriteOK
         }
 
-        const startPos: number = this.writePos
+        const startPos = this.writePos
         if (arrLen > 30) {
             this.putByte(95)
         } else {
@@ -566,7 +566,7 @@ export class RPCStream {
 
 
     public readNull(): boolean {
-        if (this.peekByte() === 1) {
+        if (this.canRead() && this.peekByte() === 1) {
             this.readPos++
             return true
         } else {
@@ -575,29 +575,34 @@ export class RPCStream {
     }
 
     public readBool(): [RPCBool, boolean] {
-        const ch: number = this.peekByte()
+        const ch = this.peekByte()
 
-        if (ch === 2) {
-            this.readPos++
-            return [true, true]
-        } else if (ch === 3) {
-            this.readPos++
-            return [false, true]
-        } else {
-            return [false, false]
+        if (this.canRead()) {
+            if (ch === 2) {
+                this.readPos++
+                return [true, true]
+            } else if (ch === 3) {
+                this.readPos++
+                return [false, true]
+            } else {
+                return [false, false]
+            }
         }
+
+        return [false, false]
     }
 
     public readFloat64(): [RPCFloat64, boolean] {
-        const ch: number = this.peekByte()
+        const ch = this.peekByte()
         if (ch === 4) {
-            this.readPos++
-            return [new RPCFloat64(0), true]
+            if (this.canRead()) {
+                this.readPos++
+                return [new RPCFloat64(0), true]
+            }
         } else if (ch === 5) {
-            const bytes: Uint8Array = this.readNBytes(9)
+            const bytes = this.readNBytes(9)
             if (bytes.byteLength === 9) {
-                const v: number =
-                    Ieee754.read(bytes, 1, true, 52, 8)
+                const v = Ieee754.read(bytes, 1, true, 52, 8)
                 return [new RPCFloat64(v), true]
             }
         }
@@ -606,17 +611,19 @@ export class RPCStream {
     }
 
     public readInt64(): [RPCInt64, boolean] {
-        const ch: number = this.peekByte()
+        const ch = this.peekByte()
+
         if (ch > 13 && ch < 54) {
-            this.readPos++
-            return [new RPCInt64(ch - 21), true]
+            if (this.canRead()) {
+                this.readPos++
+                return [new RPCInt64(ch - 21), true]
+            }
         } else {
             switch (ch) {
             case 6: {
-                const bytes: Uint8Array = this.readNBytes(3)
+                const bytes = this.readNBytes(3)
                 if (bytes.byteLength === 3) {
-                    const v: number =
-                            (bytes[2] & 0xFF) * 256 +
+                    const v = (bytes[2] & 0xFF) * 256 +
                             (bytes[1] & 0xFF) -
                             32768
                     return [new RPCInt64(v), true]
@@ -624,7 +631,7 @@ export class RPCStream {
                 break
             }
             case 7: {
-                const bytes: Uint8Array = this.readNBytes(5)
+                const bytes = this.readNBytes(5)
                 if (bytes.byteLength === 5) {
                     const v: number =
                             (bytes[4] & 0xFF) * 16777216 +
@@ -637,7 +644,7 @@ export class RPCStream {
                 break
             }
             case 8: {
-                const bytes: Uint8Array = this.readNBytes(9)
+                const bytes = this.readNBytes(9)
                 if (bytes.byteLength === 9) {
                     return [RPCInt64.fromBytes(bytes.slice(1)), true]
                 }
@@ -646,32 +653,34 @@ export class RPCStream {
             default:
                 break
             }
-            return [new RPCInt64(NaN), false]
         }
+
+        return [new RPCInt64(NaN), false]
     }
 
     public readUint64(): [RPCUint64, boolean] {
         const ch = this.peekByte()
+
         if (ch > 53 && ch < 64) {
-            this.readPos++
-            return [new RPCUint64(ch - 54), true]
+            if (this.canRead()) {
+                this.readPos++
+                return [new RPCUint64(ch - 54), true]
+            }
         } else {
             switch (ch) {
             case 9: {
-                const bytes: Uint8Array = this.readNBytes(3)
+                const bytes = this.readNBytes(3)
                 if (bytes.byteLength === 3) {
-                    const v: number =
-                            (bytes[2] & 0xFF) * 256 +
+                    const v = (bytes[2] & 0xFF) * 256 +
                             (bytes[1] & 0xFF)
                     return [new RPCUint64(v), true]
                 }
                 break
             }
             case 10: {
-                const bytes: Uint8Array = this.readNBytes(5)
+                const bytes = this.readNBytes(5)
                 if (bytes.byteLength === 5) {
-                    const v: number =
-                            (bytes[4] & 0xFF) * 16777216 +
+                    const v = (bytes[4] & 0xFF) * 16777216 +
                             (bytes[3] & 0xFF) * 65536 +
                             (bytes[2] & 0xFF) * 256 +
                             (bytes[1] & 0xFF)
@@ -680,7 +689,7 @@ export class RPCStream {
                 break
             }
             case 11: {
-                const bytes: Uint8Array = this.readNBytes(9)
+                const bytes = this.readNBytes(9)
                 if (bytes.byteLength === 9) {
                     return [RPCUint64.fromBytes(bytes.slice(1)), true]
                 }
@@ -689,8 +698,9 @@ export class RPCStream {
             default:
                 break
             }
-            return [new RPCUint64(NaN), false]
         }
+
+        return [new RPCUint64(NaN), false]
     }
 
     public readString(): [RPCString, boolean] {
@@ -699,8 +709,10 @@ export class RPCStream {
         let strLen = 0
 
         if (ch === 128) {
-            this.readPos++
-            return ["", true]
+            if (this.canRead()) {
+                this.readPos++
+                return ["", true]
+            }
         } else if (ch > 128 && ch < 191) {
             strLen = ch - 128
             this.readPos++
@@ -735,8 +747,10 @@ export class RPCStream {
         let bytesLen = 0
 
         if (ch === 192) {
-            this.readPos++
-            return [new Uint8Array([]), true]
+            if (this.canRead()) {
+                this.readPos++
+                return [new Uint8Array([]), true]
+            }
         } else if (ch > 192 && ch < 255) {
             bytesLen = ch - 192
             this.readPos++
@@ -769,8 +783,10 @@ export class RPCStream {
         let totalLen = 0
 
         if (ch === 64) {
-            this.readPos++
-            return [new Array<RPCAny>(), true]
+            if (this.canRead()) {
+                this.readPos++
+                return [new Array<RPCAny>(), true]
+            }
         } else if (ch > 64 && ch < 95) {
             arrLen = ch - 64
             totalLen = this.getUint32(this.readPos + 1)[0]
@@ -806,14 +822,16 @@ export class RPCStream {
     }
 
     public readMap(): [RPCMap, boolean] {
-        const ch: number = this.peekByte()
+        const ch = this.peekByte()
         const readStart = this.readPos
         let mapLen = 0
         let totalLen = 0
 
         if (ch == 96) {
-            this.readPos++
-            return [new Map<string, RPCAny>(), true]
+            if (this.canRead()) {
+                this.readPos++
+                return [new Map<string, RPCAny>(), true]
+            }
         } else if (ch > 96 && ch < 127) {
             mapLen = ch - 96
             totalLen = this.getUint32(this.readPos + 1)[0]
@@ -850,7 +868,7 @@ export class RPCStream {
     }
 
     public read(): [RPCAny, boolean] {
-        const op: number = this.peekByte()
+        const op = this.peekByte()
 
         switch (op) {
         case 1:
