@@ -37,7 +37,7 @@ export function stringToUTF8(v: string): Uint8Array {
     let bufPos = 0
 
     while ((ch = v.charCodeAt(strPos++)) > 0) {
-        if (bufPos - buffer.byteLength < 4) {
+        if (buffer.byteLength - bufPos < 4) {
             const newBuffer = new Uint8Array(buffer.byteLength * 2)
             newBuffer.set(buffer, 0)
             buffer = newBuffer
