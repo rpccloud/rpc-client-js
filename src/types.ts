@@ -131,6 +131,21 @@ export class RPCFloat64 {
     }
 }
 
+// eslint-disable-next-line
+export function toRPCMap(value: any): RPCMap {
+    const ret = new Map<string, RPCAny>()
+
+    if (typeof value === "object") {
+        for (const key in value) {
+            if (Object.prototype.hasOwnProperty.call(value, key)) {
+                ret.set(key, value[key])
+            }
+        }
+    }
+
+    return ret
+}
+
 export type RPCString = string
 
 export type RPCBytes = Uint8Array

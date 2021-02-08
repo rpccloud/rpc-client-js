@@ -3,7 +3,7 @@ import {
     RPCInt64,
     RPCUint64,
     toRPCFloat64,
-    toRPCInt64,
+    toRPCInt64, toRPCMap,
     toRPCUint64
 } from "./types"
 
@@ -154,4 +154,46 @@ describe("RPCFloat64 tests", () => {
     test("toNumber", () => {
         expect(new RPCFloat64(5.1).toNumber()).toStrictEqual(5.1)
     })
+})
+
+describe("RPCMap tests", () => {
+    const now = new Date()
+
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    test("toRPCMap", () => {
+        expect(toRPCMap({1: 12, 2: 12}))
+            .toStrictEqual(new Map<string, any>([
+                ["1", 12], ["2", 12],
+            ]))
+    })
+
+    test("toRPCMap", () => {
+        expect(toRPCMap({1: 12, 2: now}))
+            .toStrictEqual(new Map<string, any>([
+                ["1", 12], ["2", now],
+            ]))
+    })
+
+    test("toRPCMap", () => {
+        expect(toRPCMap(undefined)).toStrictEqual(new Map<string, any>([]))
+    })
+
+    test("toRPCMap", () => {
+        expect(toRPCMap(null)).toStrictEqual(new Map<string, any>([]))
+    })
+
+    test("toRPCMap", () => {
+        expect(toRPCMap(12)).toStrictEqual(new Map<string, any>([]))
+    })
+
+    test("toRPCMap", () => {
+        expect(toRPCMap(true)).toStrictEqual(new Map<string, any>([]))
+    })
+
+    test("toRPCMap", () => {
+        expect(toRPCMap(toRPCInt64(12))).toStrictEqual(new Map<string, any>([
+            ["bytes", null], ["value", 12]
+        ]))
+    })
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 })

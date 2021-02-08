@@ -14,13 +14,11 @@ import {stringToUTF8, utf8ToString} from "./utils"
 export class RPCStream {
     private static readonly streamVersion = 1
 
-    public static readonly streamPosVersion = 0
-    public static readonly streamPosLength = 4
-    public static readonly streamPosCheckSum = 8
-    public static readonly streamPosZoneID = 16
-    public static readonly streamPosCallbackID = 38
-    public static readonly streamPosDepth = 46
-    public static readonly streamPosBody = 48
+    private static readonly streamPosVersion = 0
+    private static readonly streamPosLength = 4
+    private static readonly streamPosCheckSum = 8
+    private static readonly streamPosCallbackID = 38
+    private static readonly streamPosBody = 48
 
     public static readonly StreamWriteOK = ""
     public static readonly StreamWriteOverflow = " overflows"
@@ -92,7 +90,7 @@ export class RPCStream {
         this.writePos++
     }
 
-    public putBytes(value: Uint8Array): void {
+    private putBytes(value: Uint8Array): void {
         this.enlarge(this.writePos + value.byteLength)
         for (const n of value) {
             this.data[this.writePos] = n
@@ -120,10 +118,6 @@ export class RPCStream {
         return new Uint8Array(0)
     }
 
-    public getVersion(): number {
-        return this.data[0]
-    }
-
     private getLength(): number {
         return this.getUint32(RPCStream.streamPosLength)[0]
     }
@@ -143,6 +137,10 @@ export class RPCStream {
         return ret
     }
 
+    public getVersion(): number {
+        return this.data[RPCStream.streamPosVersion]
+    }
+
     public buildStreamCheck(): void {
         this.setUint32(RPCStream.streamPosLength, this.writePos)
         this.data.set(RPCStream.zero8Bytes, RPCStream.streamPosLength)
@@ -150,7 +148,11 @@ export class RPCStream {
     }
 
     public checkStream(): boolean {
-        return this.getCheckSum() === RPCStream.zero8Bytes &&
+        const checkData = this.data.slice(
+            RPCStream.streamPosCheckSum,
+            RPCStream.streamPosCheckSum + 8,
+        )
+        return this.getCheckSum() === checkData &&
             this.getLength() === this.writePos
     }
 
@@ -278,7 +280,7 @@ export class RPCStream {
             return RPCStream.StreamWriteUnsupportedValue
         }
 
-        let v: number = value.toNumber()
+        let v = value.toNumber()
         if (v > -8 && v < 33) {
             this.putByte(v + 21)
             return RPCStream.StreamWriteOK
@@ -340,7 +342,7 @@ export class RPCStream {
             return RPCStream.StreamWriteUnsupportedValue
         }
 
-        let v: number = value.toNumber()
+        let v = value.toNumber()
 
         if (v < 10) {
             this.putByte(v + 54)
@@ -564,7 +566,6 @@ export class RPCStream {
         }
     }
 
-
     public readNull(): boolean {
         if (this.canRead() && this.peekByte() === 1) {
             this.readPos++
@@ -633,8 +634,7 @@ export class RPCStream {
             case 7: {
                 const bytes = this.readNBytes(5)
                 if (bytes.byteLength === 5) {
-                    const v: number =
-                            (bytes[4] & 0xFF) * 16777216 +
+                    const v = (bytes[4] & 0xFF) * 16777216 +
                             (bytes[3] & 0xFF) * 65536 +
                             (bytes[2] & 0xFF) * 256 +
                             (bytes[1] & 0xFF) -
@@ -766,7 +766,7 @@ export class RPCStream {
         }
 
         if (bytesLen > 0) {
-            const bytes: Uint8Array = this.readNBytes(bytesLen)
+            const bytes = this.readNBytes(bytesLen)
             if (bytes.byteLength === bytesLen) {
                 return [bytes, true]
             }
