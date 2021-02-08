@@ -551,13 +551,149 @@ describe("RPCStream tests", () => {
 
                 if (i + l <= 2048) {
                     expect((v as any).readNBytes(l))
-                        .toStrictEqual(v["data"].slice(i, i+l))
+                        .toStrictEqual(v["data"].slice(i, i + l))
                 } else {
                     expect((v as any).readNBytes(l))
                         .toStrictEqual(new Uint8Array(0))
                 }
             }
         }
+    })
+
+    test("getLength", () => {
+        const v = new RPCStream()
+        for (let i = 1; i < 2048; i++) {
+            expect((v as any).putByte(i)).toStrictEqual(undefined)
+            expect(v.buildStreamCheck()).toStrictEqual(undefined)
+            expect((v as any).getLength())
+                .toStrictEqual(RPCStream["streamPosBody"] + i)
+        }
+    })
+
+    test("getVersion", () => {
+        const v = new RPCStream()
+        expect(v.getVersion()).toStrictEqual(RPCStream["streamVersion"])
+    })
+
+    test("buildStreamCheck", () => {
+        const v = new RPCStream()
+        for (let i = 1; i < 2048; i++) {
+            expect((v as any).putByte(i)).toStrictEqual(undefined)
+            expect(v.buildStreamCheck()).toStrictEqual(undefined)
+            expect(v.checkStream()).toStrictEqual(true)
+        }
+    })
+
+    test("checkStream", () => {
+        const v1 = new RPCStream()
+        v1.buildStreamCheck()
+        expect((v1 as any).putByte(1)).toStrictEqual(undefined)
+        expect(v1.checkStream()).toStrictEqual(false)
+
+        const v2 = new RPCStream()
+        expect((v2 as any).putByte(1)).toStrictEqual(undefined)
+        v2.buildStreamCheck()
+        v2["data"][RPCStream["streamPosBody"]] = 2
+        expect(v2.checkStream()).toStrictEqual(false)
+
+        const v3 = new RPCStream()
+        expect((v3 as any).putByte(1)).toStrictEqual(undefined)
+        v3.buildStreamCheck()
+        expect(v3.checkStream()).toStrictEqual(true)
+    })
+
+    test("getReadPos", () => {
+        const v = new RPCStream()
+        expect(v.getReadPos()).toStrictEqual(RPCStream["streamPosBody"])
+    })
+
+    test("setReadPos", () => {
+        const v1 = new RPCStream()
+        expect(v1.setReadPos(1)).toStrictEqual(false)
+
+        const v2 = new RPCStream()
+        expect(v2.setReadPos(RPCStream["streamPosBody"] + 1))
+            .toStrictEqual(false)
+
+        const v3 = new RPCStream()
+        v3.setWritePos(2048)
+        for (let i = RPCStream["streamPosBody"]; i <= 2048; i++) {
+            expect(v3.setReadPos(i)).toStrictEqual(true)
+            expect(v3["readPos"]).toStrictEqual(i)
+        }
+    })
+
+    test("getWritePos", () => {
+        const v = new RPCStream()
+        expect(v.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
+    })
+
+    test("setWritePos", () => {
+        const v = new RPCStream()
+
+        for (let i = 0; i < 4096; i++) {
+            if (i < RPCStream["streamPosBody"]) {
+                expect(v.setWritePos(i)).toStrictEqual(false)
+            } else {
+                expect(v.setWritePos(i)).toStrictEqual(true)
+                expect(v.getWritePos()).toStrictEqual(i)
+                expect(v["data"].byteLength >= i).toStrictEqual(true)
+            }
+        }
+    })
+
+    test("getBuffer", () => {
+        const v = new RPCStream()
+        expect(v.getBuffer()).toStrictEqual(v["data"].slice(0, v.getWritePos()))
+    })
+
+    test("getCallbackID", () => {
+        const v1 = new RPCStream()
+        expect(v1.getCallbackID()).toStrictEqual(0)
+
+        const v2 = new RPCStream()
+        v2.setCallbackID(12345)
+        expect(v2.getCallbackID()).toStrictEqual(12345)
+    })
+
+    test("setCallbackID", () => {
+        const v1 = new RPCStream()
+        expect(v1.setCallbackID(0)).toStrictEqual(true)
+
+        const v2 = new RPCStream()
+        expect(v2.setCallbackID(1)).toStrictEqual(true)
+
+        const v3 = new RPCStream()
+        expect(v3.setCallbackID(0.3)).toStrictEqual(false)
+
+        const v4 = new RPCStream()
+        expect(v4.setCallbackID(-1)).toStrictEqual(false)
+    })
+
+    test("canRead", () => {
+        const v1 = new RPCStream()
+        expect(v1.canRead()).toStrictEqual(false)
+
+        const v2 = new RPCStream()
+        v2["readPos"] = RPCStream["streamPosBody"] + 1
+        expect(v2.canRead()).toStrictEqual(false)
+
+        const v3 =  new RPCStream()
+        v3.setWritePos(RPCStream["streamPosBody"] + 1)
+        expect(v3.canRead()).toStrictEqual(true)
+    })
+
+    test("isReadFinish", () => {
+        const v1 = new RPCStream()
+        expect(v1.isReadFinish()).toStrictEqual(true)
+
+        const v2 = new RPCStream()
+        v2["readPos"] = RPCStream["streamPosBody"] + 1
+        expect(v2.isReadFinish()).toStrictEqual(false)
+
+        const v3 =  new RPCStream()
+        v3.setWritePos(RPCStream["streamPosBody"] + 1)
+        expect(v3.isReadFinish()).toStrictEqual(false)
     })
 })
 

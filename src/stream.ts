@@ -122,6 +122,10 @@ export class RPCStream {
         return this.getUint32(RPCStream.streamPosLength)[0]
     }
 
+    public getVersion(): number {
+        return this.data[RPCStream.streamPosVersion]
+    }
+
     private getCheckSum(): Uint8Array {
         const ret = new Uint8Array(8)
         const blockSize = Math.ceil(this.writePos / 8) * 8
@@ -137,28 +141,25 @@ export class RPCStream {
         return ret
     }
 
-    public getVersion(): number {
-        return this.data[RPCStream.streamPosVersion]
-    }
-
     public buildStreamCheck(): void {
         this.setUint32(RPCStream.streamPosLength, this.writePos)
-        this.data.set(RPCStream.zero8Bytes, RPCStream.streamPosLength)
-        this.data.set(this.getCheckSum(), RPCStream.streamPosLength)
+        this.data.set(RPCStream.zero8Bytes, RPCStream.streamPosCheckSum)
+        this.data.set(this.getCheckSum(), RPCStream.streamPosCheckSum)
     }
 
     public checkStream(): boolean {
-        const checkData = this.data.slice(
-            RPCStream.streamPosCheckSum,
-            RPCStream.streamPosCheckSum + 8,
-        )
-        return this.getCheckSum() === checkData &&
-            this.getLength() === this.writePos
-    }
+        if (this.getLength() !== this.writePos) {
+            return false
+        }
 
-    public reset(): void {
-        this.writePos = RPCStream.streamPosBody
-        this.readPos = RPCStream.streamPosBody
+        const checkBytes = this.getCheckSum()
+        for (let i = 0; i < 8; i++) {
+            if (checkBytes[i] !== 0) {
+                return false
+            }
+        }
+
+        return true
     }
 
     public getReadPos(): number {
@@ -166,7 +167,7 @@ export class RPCStream {
     }
 
     public setReadPos(readPos: number): boolean {
-        if (readPos >= 0 && readPos <= this.writePos) {
+        if (readPos >= RPCStream.streamPosBody && readPos <= this.writePos) {
             this.readPos = readPos
             return true
         } else {
@@ -179,7 +180,7 @@ export class RPCStream {
     }
 
     public setWritePos(writePos: number): boolean {
-        if (writePos >= 0) {
+        if (writePos >= RPCStream.streamPosBody) {
             this.enlarge(writePos)
             this.writePos = writePos
             return true
