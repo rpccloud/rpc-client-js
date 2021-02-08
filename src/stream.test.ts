@@ -10,6 +10,8 @@ import {RPCStream} from "./stream"
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 function getTestDepthArray(depth: number): [RPCAny, string] {
     if (depth <= 1) {
         return [true, ""]
@@ -353,35 +355,69 @@ const streamTestSuccessCollections = new Map([
 ])
 
 const streamTestWriteCollections = new Map([
+    ["bool", [
+        [null, RPCStream.StreamWriteUnsupportedValue],
+        [undefined, RPCStream.StreamWriteUnsupportedValue],
+    ]],
+    ["float64", [
+        [new RPCFloat64(NaN), RPCStream.StreamWriteUnsupportedValue],
+        [null, RPCStream.StreamWriteUnsupportedValue],
+        [undefined, RPCStream.StreamWriteUnsupportedValue],
+    ]],
+    ["int64", [
+        [new RPCInt64(NaN), RPCStream.StreamWriteUnsupportedValue],
+        [null, RPCStream.StreamWriteUnsupportedValue],
+        [undefined, RPCStream.StreamWriteUnsupportedValue],
+    ]],
+    ["uint64", [
+        [new RPCUint64(NaN), RPCStream.StreamWriteUnsupportedValue],
+        [null, RPCStream.StreamWriteUnsupportedValue],
+        [undefined, RPCStream.StreamWriteUnsupportedValue],
+    ]],
+    ["string", [
+        [String.fromCharCode(2097152), RPCStream.StreamWriteUnsupportedValue],
+        [null, RPCStream.StreamWriteUnsupportedValue],
+        [undefined, RPCStream.StreamWriteUnsupportedValue],
+    ]],
+    ["bytes", [
+        [null, RPCStream.StreamWriteUnsupportedValue],
+        [undefined, RPCStream.StreamWriteUnsupportedValue],
+    ]],
     ["array", [
+        [null, RPCStream.StreamWriteUnsupportedValue],
+        [undefined, RPCStream.StreamWriteUnsupportedValue],
+        [[true, 1, "hi"], "[1]" + RPCStream.StreamWriteUnsupportedValue],
         [
             [true, true, true, new Date(), true],
-            "[3] type is not supported",
+            "[3] is not supported",
         ],
         [
             getTestDepthArray(65)[0],
             getTestDepthArray(65)[1] + " overflows",
         ],
-        [
-            getTestDepthArray(64)[0],
-            RPCStream.StreamWriteOK,
-        ]
     ]],
     ["map", [
+        [null, RPCStream.StreamWriteUnsupportedValue],
+        [undefined, RPCStream.StreamWriteUnsupportedValue],
+        [
+            new Map([["foo", 3]]),
+            "[\"foo\"]" + RPCStream.StreamWriteUnsupportedValue,
+        ],
+        [
+            new Map([[String.fromCharCode(2097152), true]]),
+            "[" + String.fromCharCode(2097152) + "]" +
+            RPCStream.StreamWriteUnsupportedValue,
+        ],
         [
             new Map<string, RPCAny>([
                 ["0", toRPCInt64(0)], ["1", new Date() as never],
             ]),
-            "[\"1\"] type is not supported",
+            "[\"1\"] is not supported",
         ],
         [
             getTestDepthMap(65)[0],
             getTestDepthMap(65)[1] + " overflows",
         ],
-        [
-            getTestDepthMap(64)[0],
-            RPCStream.StreamWriteOK,
-        ]
     ]],
     ["value", [
         [null, RPCStream.StreamWriteOK],
@@ -400,16 +436,17 @@ const streamTestWriteCollections = new Map([
             new Map<string, RPCAny>([
                 ["0", toRPCInt64(0)], ["1", new Date() as never],
             ]),
-            "value[\"1\"] type is not supported",
+            "value[\"1\"] is not supported",
         ],
         [
             getTestDepthMap(65)[0],
             "value" + getTestDepthMap(65)[1] + " overflows",
         ],
+        [new Date(), "value" + RPCStream.StreamWriteUnsupportedValue],
+        [undefined, "value" + RPCStream.StreamWriteUnsupportedValue],
+        [1, "value" + RPCStream.StreamWriteUnsupportedValue],
     ]]
 ])
-
-console.log(streamTestSuccessCollections !== streamTestWriteCollections)
 
 describe("RPCStream tests", () => {
     test("RPCStream constant", () => {
@@ -423,7 +460,7 @@ describe("RPCStream tests", () => {
         expect(RPCStream["StreamWriteOK"]).toStrictEqual("")
         expect(RPCStream["StreamWriteOverflow"]).toStrictEqual(" overflows")
         expect(RPCStream["StreamWriteUnsupportedValue"])
-            .toStrictEqual(" is not support")
+            .toStrictEqual(" is not supported")
 
         expect(RPCStream.ControlStreamConnectRequest).toStrictEqual(1)
         expect(RPCStream.ControlStreamConnectResponse).toStrictEqual(2)
@@ -699,7 +736,6 @@ describe("RPCStream tests", () => {
 
 describe("RPCStream Null", () => {
     test("RPCStream_writeNull", () => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         for (const v of streamTestSuccessCollections.get("null")!) {
             const stream: RPCStream = new RPCStream()
             stream.writeNull()
@@ -711,7 +747,6 @@ describe("RPCStream Null", () => {
 
 describe("RPCStream RPCBool", () => {
     test("RPCStream_writeBool", () => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         for (const v of streamTestSuccessCollections.get("bool")!) {
             const stream: RPCStream = new RPCStream()
             expect(stream.writeBool(v[0] as boolean))
@@ -720,23 +755,19 @@ describe("RPCStream RPCBool", () => {
                 .toStrictEqual(v[1])
         }
 
-        // null
-        const bug1: RPCStream = new RPCStream()
-        expect(bug1.writeBool(null as any))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug1.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
-
-        // undefined
-        const bug2: RPCStream = new RPCStream()
-        expect(bug2.writeBool(undefined as any))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug2.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
+        for (const v of streamTestWriteCollections.get("bool")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.writeBool(v[0] as boolean))
+                .toStrictEqual(v[1])
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+            expect(stream.getWritePos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
     })
 })
 
 describe("RPCStream RPCFloat64", () => {
     test("RPCStream_writeFloat64", () => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         for (const v of streamTestSuccessCollections.get("float64")!) {
             const stream: RPCStream = new RPCStream()
             expect(stream.writeFloat64(v[0] as RPCFloat64))
@@ -745,29 +776,19 @@ describe("RPCStream RPCFloat64", () => {
                 .toStrictEqual(v[1])
         }
 
-        // NaN
-        const bug1: RPCStream = new RPCStream()
-        expect(bug1.writeFloat64(new RPCFloat64(NaN)))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug1.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
-
-        // null
-        const bug2: RPCStream = new RPCStream()
-        expect(bug2.writeFloat64(null as any))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug2.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
-
-        // undefined
-        const bug3: RPCStream = new RPCStream()
-        expect(bug3.writeFloat64(undefined as any))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug3.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
+        for (const v of streamTestWriteCollections.get("float64")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.writeFloat64(v[0] as RPCFloat64))
+                .toStrictEqual(v[1])
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+            expect(stream.getWritePos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
     })
 })
 
 describe("RPCStream RPCInt64", () => {
     test("RPCStream_writeInt64", () => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         for (const v of streamTestSuccessCollections.get("int64")!) {
             const stream: RPCStream = new RPCStream()
             expect(stream.writeInt64(v[0] as RPCInt64))
@@ -776,29 +797,19 @@ describe("RPCStream RPCInt64", () => {
                 .toStrictEqual(v[1])
         }
 
-        // NaN
-        const bug1: RPCStream = new RPCStream()
-        expect(bug1.writeInt64(new RPCInt64(NaN)))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug1.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
-
-        // null
-        const bug2: RPCStream = new RPCStream()
-        expect(bug2.writeInt64(null as any))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug2.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
-
-        // undefined
-        const bug3: RPCStream = new RPCStream()
-        expect(bug3.writeInt64(undefined as any))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug3.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
+        for (const v of streamTestWriteCollections.get("int64")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.writeInt64(v[0] as RPCInt64))
+                .toStrictEqual(v[1])
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+            expect(stream.getWritePos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
     })
 })
 
 describe("RPCStream RPCUint64", () => {
-    test("RPCStream_writeInt64", () => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    test("RPCStream_writeUint64", () => {
         for (const v of streamTestSuccessCollections.get("uint64")!) {
             const stream: RPCStream = new RPCStream()
             expect(stream.writeUint64(v[0] as RPCUint64))
@@ -807,29 +818,19 @@ describe("RPCStream RPCUint64", () => {
                 .toStrictEqual(v[1])
         }
 
-        // NaN
-        const bug1: RPCStream = new RPCStream()
-        expect(bug1.writeUint64(new RPCUint64(NaN)))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug1.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
-
-        // null
-        const bug2: RPCStream = new RPCStream()
-        expect(bug2.writeUint64(null as any))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug2.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
-
-        // undefined
-        const bug3: RPCStream = new RPCStream()
-        expect(bug3.writeUint64(undefined as any))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug3.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
+        for (const v of streamTestWriteCollections.get("uint64")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.writeUint64(v[0] as RPCUint64))
+                .toStrictEqual(v[1])
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+            expect(stream.getWritePos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
     })
 })
 
 describe("RPCStream RPCString", () => {
     test("RPCStream_writeString", () => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         for (const v of streamTestSuccessCollections.get("string")!) {
             const stream: RPCStream = new RPCStream()
             expect(stream.writeString(v[0] as RPCString))
@@ -838,29 +839,18 @@ describe("RPCStream RPCString", () => {
                 .toStrictEqual(v[1])
         }
 
-        // null
-        const bug1: RPCStream = new RPCStream()
-        expect(bug1.writeString(null as any))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug1.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
-
-        // undefined
-        const bug2: RPCStream = new RPCStream()
-        expect(bug2.writeString(undefined as any))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug2.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
-
-        // bad string
-        const badString: string = String.fromCharCode(2097152)
-        const bug3: RPCStream = new RPCStream()
-        expect(bug3.writeString(badString))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug3.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
+        for (const v of streamTestWriteCollections.get("string")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.writeString(v[0] as RPCString))
+                .toStrictEqual(v[1])
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+            expect(stream.getWritePos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
     })
 })
 
 describe("RPCStream RPCBytes", () => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     for (const v of streamTestSuccessCollections.get("bytes")!) {
         const stream: RPCStream = new RPCStream()
         expect(stream.writeBytes(v[0] as RPCBytes))
@@ -869,22 +859,18 @@ describe("RPCStream RPCBytes", () => {
             .toStrictEqual(v[1])
     }
 
-    // null
-    const bug1: RPCStream = new RPCStream()
-    expect(bug1.writeBytes(null as any))
-        .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-    expect(bug1.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
-
-    // undefined
-    const bug2: RPCStream = new RPCStream()
-    expect(bug2.writeBytes(null as any))
-        .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-    expect(bug2.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
+    for (const v of streamTestWriteCollections.get("bytes")!) {
+        const stream: RPCStream = new RPCStream()
+        expect(stream.writeBytes(v[0] as RPCBytes))
+            .toStrictEqual(v[1])
+        expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+        expect(stream.getWritePos())
+            .toStrictEqual(RPCStream["streamPosBody"])
+    }
 })
 
 describe("RPCStream RPCArray", () => {
     test("RPCStream_writeArray", () => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         for (const v of streamTestSuccessCollections.get("array")!) {
             const stream: RPCStream = new RPCStream()
             expect((stream as any).writeArrayInner(v[0] as RPCArray, 64))
@@ -893,29 +879,19 @@ describe("RPCStream RPCArray", () => {
                 .toStrictEqual(v[1])
         }
 
-        // null
-        const bug1: RPCStream = new RPCStream()
-        expect((bug1 as any).writeArrayInner(null as any, 64))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug1.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
-
-        // undefined
-        const bug2: RPCStream = new RPCStream()
-        expect((bug2 as any).writeArrayInner(undefined as any, 64))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug2.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
-
-        // contain other types
-        const bug3: RPCStream = new RPCStream()
-        expect((bug3 as any).writeArrayInner([true, 1, "hi"] as any, 64))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug3.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
+        for (const v of streamTestWriteCollections.get("array")!) {
+            const stream: RPCStream = new RPCStream()
+            expect((stream as any).writeArrayInner(v[0] as RPCArray, 64))
+                .toStrictEqual(v[1])
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+            expect(stream.getWritePos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
     })
 })
 
 describe("RPCStream RPCMap", () => {
     test("RPCStream_writeMap", () => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         for (const v of streamTestSuccessCollections.get("map")!) {
             const stream: RPCStream = new RPCStream()
             expect((stream as any).writeMapInner(v[0] as RPCMap, 64))
@@ -924,30 +900,14 @@ describe("RPCStream RPCMap", () => {
                 .toStrictEqual(v[1])
         }
 
-        // null
-        const bug1: RPCStream = new RPCStream()
-        expect((bug1 as any).writeMapInner(null as any, 64))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug1.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
-
-        // undefined
-        const bug2: RPCStream = new RPCStream()
-        expect((bug2 as any).writeMapInner(undefined as any, 64))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug2.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
-
-        // contain other types
-        const bug3: RPCStream = new RPCStream()
-        expect((bug3 as any).writeMapInner(new Map([["foo", 3]]) as any, 64))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug3.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
-
-        // map key error
-        const bug4: RPCStream = new RPCStream()
-        expect((bug4 as any).writeMapInner(new Map<string, RPCAny>([
-            [String.fromCharCode(2097152), true],
-        ]), 64)).toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug4.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
+        for (const v of streamTestWriteCollections.get("map")!) {
+            const stream: RPCStream = new RPCStream()
+            expect((stream as any).writeMapInner(v[0] as RPCMap, 64))
+                .toStrictEqual(v[1])
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+            expect(stream.getWritePos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
     })
 })
 
@@ -957,7 +917,6 @@ describe("RPCStream RPCAny", () => {
             "null", "bool", "float64", "int64", "uint64",
             "string", "bytes", "array", "map",
         ]) {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             for (const v of streamTestSuccessCollections.get(key)!) {
                 const stream: RPCStream = new RPCStream()
                 expect(stream.write(v[0] as RPCAny))
@@ -967,25 +926,14 @@ describe("RPCStream RPCAny", () => {
             }
         }
 
-        // other unsupported object type
-        const bug1: RPCStream = new RPCStream()
-        expect(bug1.write(new Date() as any))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug1.getWritePos())
-            .toStrictEqual(RPCStream["streamPosBody"])
-
-        // unsupported number type
-        const bug2: RPCStream = new RPCStream()
-        expect(bug2.write(1 as any))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug2.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
-
-        // undefined
-        const bug3: RPCStream = new RPCStream()
-        expect(bug3.write(undefined as any))
-            .toStrictEqual(RPCStream.StreamWriteUnsupportedValue)
-        expect(bug3.getWritePos()).toStrictEqual(RPCStream["streamPosBody"])
+        for (const v of streamTestWriteCollections.get("value")!) {
+            console.log(v)
+            const stream: RPCStream = new RPCStream()
+            expect(stream.write(v[0] as RPCAny)).toStrictEqual(v[1])
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+        }
     })
 })
 
 /* eslint-enable @typescript-eslint/no-explicit-any */
+/* eslint-enable @typescript-eslint/no-non-null-assertion */

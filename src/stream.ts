@@ -22,7 +22,7 @@ export class RPCStream {
 
     public static readonly StreamWriteOK = ""
     public static readonly StreamWriteOverflow = " overflows"
-    public static readonly StreamWriteUnsupportedValue = " is not support"
+    public static readonly StreamWriteUnsupportedValue = " is not supported"
 
     public static readonly ControlStreamConnectRequest = 1
     public static readonly ControlStreamConnectResponse = 2
@@ -473,7 +473,7 @@ export class RPCStream {
             const errCode = this.writeInner(v[i], depth - 1)
             if (errCode !== RPCStream.StreamWriteOK) {
                 this.setWritePos(startPos)
-                return errCode
+                return `[${i}]${errCode}`
             }
         }
 
@@ -509,12 +509,12 @@ export class RPCStream {
             const errCode1 = this.writeString(key)
             if (errCode1 !== RPCStream.StreamWriteOK) {
                 this.setWritePos(startPos)
-                return errCode1
+                return `[${key}]${errCode1}`
             }
             const errCode2 = this.writeInner(value, depth - 1)
             if (errCode2 !== RPCStream.StreamWriteOK) {
                 this.setWritePos(startPos)
-                return errCode2
+                return `["${key}"]${errCode2}`
             }
         }
 
@@ -525,7 +525,13 @@ export class RPCStream {
     }
 
     public write(v: RPCAny): string {
-        return this.writeInner(v, 64)
+        const reason = this.writeInner(v, 64)
+
+        if (reason === RPCStream.StreamWriteOK) {
+            return RPCStream.StreamWriteOK
+        } else {
+            return "value" + reason
+        }
     }
 
     private writeInner(v: RPCAny, depth: number): string {
