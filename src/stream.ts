@@ -875,6 +875,14 @@ export class RPCStream {
     }
 
     public read(): [RPCAny, boolean] {
+        const fnReturn = (v: [RPCAny, boolean]): [RPCAny, boolean] => {
+            if (!v[1]) {
+                return [null, false]
+            } else {
+                return v
+            }
+        }
+
         const op = this.peekByte()
 
         switch (op) {
@@ -882,18 +890,18 @@ export class RPCStream {
             return [null, this.readNull()]
         case 2:
         case 3:
-            return this.readBool()
+            return fnReturn(this.readBool())
         case 4:
         case 5:
-            return this.readFloat64()
+            return fnReturn(this.readFloat64())
         case 6:
         case 7:
         case 8:
-            return this.readInt64()
+            return fnReturn(this.readInt64())
         case 9:
         case 10:
         case 11:
-            return this.readUint64()
+            return fnReturn(this.readUint64())
         case 12:
             return [null, false]
         case 13:
@@ -905,20 +913,20 @@ export class RPCStream {
         switch ((op >>> 6) & 0x03) {
         case 0:
             if (op < 54) {
-                return this.readInt64()
+                return fnReturn(this.readInt64())
             } else {
-                return this.readUint64()
+                return fnReturn(this.readUint64())
             }
         case 1:
             if (op < 96) {
-                return this.readArray()
+                return fnReturn(this.readArray())
             } else {
-                return this.readMap()
+                return fnReturn(this.readMap())
             }
         case 2:
-            return this.readString()
+            return fnReturn(this.readString())
         default:
-            return this.readBytes()
+            return fnReturn(this.readBytes())
         }
     }
 }
