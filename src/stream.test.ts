@@ -958,19 +958,22 @@ describe("RPCStream RPCUint64", () => {
         for (const v of streamTestSuccessCollections.get("uint64")!) {
             // ok
             const stream1: RPCStream = new RPCStream()
-            expect(stream1.write(v[0] as RPCAny)).toStrictEqual(RPCStream.StreamWriteOK)
+            expect(stream1.write(v[0] as RPCAny))
+                .toStrictEqual(RPCStream.StreamWriteOK)
             expect(stream1.readUint64()).toStrictEqual([v[0], true])
             expect(stream1.getWritePos()).toStrictEqual(stream1.getReadPos())
 
             // overflow
             const stream2: RPCStream = new RPCStream()
-            expect(stream2.write(v[0] as RPCAny)).toStrictEqual(RPCStream.StreamWriteOK)
+            expect(stream2.write(v[0] as RPCAny))
+                .toStrictEqual(RPCStream.StreamWriteOK)
             const writePos: number = stream2.getWritePos()
             for (let idx = RPCStream["streamPosBody"]; idx < writePos; idx++) {
                 stream2.setWritePos(idx)
                 expect(stream2.readUint64())
                     .toStrictEqual([new RPCUint64(NaN), false])
-                expect(stream2.getReadPos()).toStrictEqual(RPCStream["streamPosBody"])
+                expect(stream2.getReadPos())
+                    .toStrictEqual(RPCStream["streamPosBody"])
             }
 
             // type not match
@@ -978,7 +981,8 @@ describe("RPCStream RPCUint64", () => {
             (stream3 as any).putByte(13)
             expect(stream3.readUint64())
                 .toStrictEqual([new RPCUint64(NaN), false])
-            expect(stream3.getReadPos()).toStrictEqual(RPCStream["streamPosBody"])
+            expect(stream3.getReadPos())
+                .toStrictEqual(RPCStream["streamPosBody"])
         }
     })
 })
