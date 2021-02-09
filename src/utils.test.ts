@@ -183,7 +183,7 @@ describe("utils tests", () => {
     test("sleep", async () => {
         const start = getTimeNowMS()
         expect(await sleep(300)).toStrictEqual(true)
-        expect(Math.abs(getTimeNowMS() - start - 300) < 100).toStrictEqual(true)
+        expect(Math.abs(getTimeNowMS() - start - 300) < 200).toStrictEqual(true)
     })
 
     test("returnAsync", async () => {
