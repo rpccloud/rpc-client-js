@@ -732,15 +732,186 @@ describe("RPCStream tests", () => {
         v3.setWritePos(RPCStream["streamPosBody"] + 1)
         expect(v3.isReadFinish()).toStrictEqual(false)
     })
-})
 
-describe("RPCStream Null", () => {
     test("RPCStream_writeNull", () => {
         for (const v of streamTestSuccessCollections.get("null")!) {
             const stream: RPCStream = new RPCStream()
             stream.writeNull()
             expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
                 .toStrictEqual(v[1])
+        }
+    })
+
+    test("RPCStream_writeBool", () => {
+        for (const v of streamTestSuccessCollections.get("bool")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.writeBool(v[0] as boolean))
+                .toStrictEqual(RPCStream.StreamWriteOK)
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+                .toStrictEqual(v[1])
+        }
+
+        for (const v of streamTestWriteCollections.get("bool")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.writeBool(v[0] as boolean))
+                .toStrictEqual(v[1])
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+            expect(stream.getWritePos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
+    })
+
+    test("RPCStream_writeFloat64", () => {
+        for (const v of streamTestSuccessCollections.get("float64")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.writeFloat64(v[0] as RPCFloat64))
+                .toStrictEqual(RPCStream.StreamWriteOK)
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+                .toStrictEqual(v[1])
+        }
+
+        for (const v of streamTestWriteCollections.get("float64")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.writeFloat64(v[0] as RPCFloat64))
+                .toStrictEqual(v[1])
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+            expect(stream.getWritePos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
+    })
+
+    test("RPCStream_writeInt64", () => {
+        for (const v of streamTestSuccessCollections.get("int64")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.writeInt64(v[0] as RPCInt64))
+                .toStrictEqual(RPCStream.StreamWriteOK)
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+                .toStrictEqual(v[1])
+        }
+
+        for (const v of streamTestWriteCollections.get("int64")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.writeInt64(v[0] as RPCInt64))
+                .toStrictEqual(v[1])
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+            expect(stream.getWritePos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
+    })
+
+    test("RPCStream_writeUint64", () => {
+        for (const v of streamTestSuccessCollections.get("uint64")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.writeUint64(v[0] as RPCUint64))
+                .toStrictEqual(RPCStream.StreamWriteOK)
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+                .toStrictEqual(v[1])
+        }
+
+        for (const v of streamTestWriteCollections.get("uint64")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.writeUint64(v[0] as RPCUint64))
+                .toStrictEqual(v[1])
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+            expect(stream.getWritePos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
+    })
+
+    test("RPCStream_writeString", () => {
+        for (const v of streamTestSuccessCollections.get("string")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.writeString(v[0] as RPCString))
+                .toStrictEqual(RPCStream.StreamWriteOK)
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+                .toStrictEqual(v[1])
+        }
+
+        for (const v of streamTestWriteCollections.get("string")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.writeString(v[0] as RPCString))
+                .toStrictEqual(v[1])
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+            expect(stream.getWritePos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
+    })
+
+    test("RPCStream_writeBytes", () => {
+        for (const v of streamTestSuccessCollections.get("bytes")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.writeBytes(v[0] as RPCBytes))
+                .toStrictEqual(RPCStream.StreamWriteOK)
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+                .toStrictEqual(v[1])
+        }
+
+        for (const v of streamTestWriteCollections.get("bytes")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.writeBytes(v[0] as RPCBytes))
+                .toStrictEqual(v[1])
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+            expect(stream.getWritePos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
+    })
+
+    test("RPCStream_writeArray", () => {
+        for (const v of streamTestSuccessCollections.get("array")!) {
+            const stream: RPCStream = new RPCStream()
+            expect((stream as any).writeArrayInner(v[0] as RPCArray, 64))
+                .toStrictEqual(RPCStream.StreamWriteOK)
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+                .toStrictEqual(v[1])
+        }
+
+        for (const v of streamTestWriteCollections.get("array")!) {
+            const stream: RPCStream = new RPCStream()
+            expect((stream as any).writeArrayInner(v[0] as RPCArray, 64))
+                .toStrictEqual(v[1])
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+            expect(stream.getWritePos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
+    })
+
+    test("RPCStream_writeMap", () => {
+        for (const v of streamTestSuccessCollections.get("map")!) {
+            const stream: RPCStream = new RPCStream()
+            expect((stream as any).writeMapInner(v[0] as RPCMap, 64))
+                .toStrictEqual(RPCStream.StreamWriteOK)
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+                .toStrictEqual(v[1])
+        }
+
+        for (const v of streamTestWriteCollections.get("map")!) {
+            const stream: RPCStream = new RPCStream()
+            expect((stream as any).writeMapInner(v[0] as RPCMap, 64))
+                .toStrictEqual(v[1])
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+            expect(stream.getWritePos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
+    })
+
+    test("RPCStream_write", () => {
+        for (const key of [
+            "null", "bool", "float64", "int64", "uint64",
+            "string", "bytes", "array", "map",
+        ]) {
+            for (const v of streamTestSuccessCollections.get(key)!) {
+                const stream: RPCStream = new RPCStream()
+                expect(stream.write(v[0] as RPCAny))
+                    .toStrictEqual(RPCStream.StreamWriteOK)
+                expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
+                    .toStrictEqual(v[1])
+            }
+        }
+
+        for (const v of streamTestWriteCollections.get("value")!) {
+            const stream: RPCStream = new RPCStream()
+            expect(stream.write(v[0] as RPCAny)).toStrictEqual(v[1])
+            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
         }
     })
 
@@ -770,27 +941,6 @@ describe("RPCStream Null", () => {
             (stream3 as any).putByte(13)
             expect(stream3.readNull()).toStrictEqual(false)
             expect(stream3.getReadPos())
-                .toStrictEqual(RPCStream["streamPosBody"])
-        }
-    })
-})
-
-describe("RPCStream RPCBool", () => {
-    test("RPCStream_writeBool", () => {
-        for (const v of streamTestSuccessCollections.get("bool")!) {
-            const stream: RPCStream = new RPCStream()
-            expect(stream.writeBool(v[0] as boolean))
-                .toStrictEqual(RPCStream.StreamWriteOK)
-            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
-                .toStrictEqual(v[1])
-        }
-
-        for (const v of streamTestWriteCollections.get("bool")!) {
-            const stream: RPCStream = new RPCStream()
-            expect(stream.writeBool(v[0] as boolean))
-                .toStrictEqual(v[1])
-            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
-            expect(stream.getWritePos())
                 .toStrictEqual(RPCStream["streamPosBody"])
         }
     })
@@ -826,27 +976,6 @@ describe("RPCStream RPCBool", () => {
                 .toStrictEqual(RPCStream["streamPosBody"])
         }
     })
-})
-
-describe("RPCStream RPCFloat64", () => {
-    test("RPCStream_writeFloat64", () => {
-        for (const v of streamTestSuccessCollections.get("float64")!) {
-            const stream: RPCStream = new RPCStream()
-            expect(stream.writeFloat64(v[0] as RPCFloat64))
-                .toStrictEqual(RPCStream.StreamWriteOK)
-            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
-                .toStrictEqual(v[1])
-        }
-
-        for (const v of streamTestWriteCollections.get("float64")!) {
-            const stream: RPCStream = new RPCStream()
-            expect(stream.writeFloat64(v[0] as RPCFloat64))
-                .toStrictEqual(v[1])
-            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
-            expect(stream.getWritePos())
-                .toStrictEqual(RPCStream["streamPosBody"])
-        }
-    })
 
     test("RPCStream_readFloat64", () => {
         for (const v of streamTestSuccessCollections.get("float64")!) {
@@ -879,27 +1008,7 @@ describe("RPCStream RPCFloat64", () => {
                 .toStrictEqual(RPCStream["streamPosBody"])
         }
     })
-})
 
-describe("RPCStream RPCInt64", () => {
-    test("RPCStream_writeInt64", () => {
-        for (const v of streamTestSuccessCollections.get("int64")!) {
-            const stream: RPCStream = new RPCStream()
-            expect(stream.writeInt64(v[0] as RPCInt64))
-                .toStrictEqual(RPCStream.StreamWriteOK)
-            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
-                .toStrictEqual(v[1])
-        }
-
-        for (const v of streamTestWriteCollections.get("int64")!) {
-            const stream: RPCStream = new RPCStream()
-            expect(stream.writeInt64(v[0] as RPCInt64))
-                .toStrictEqual(v[1])
-            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
-            expect(stream.getWritePos())
-                .toStrictEqual(RPCStream["streamPosBody"])
-        }
-    })
 
     test("RPCStream_readInt64", () => {
         for (const v of streamTestSuccessCollections.get("int64")!) {
@@ -932,28 +1041,6 @@ describe("RPCStream RPCInt64", () => {
         }
     })
 
-})
-
-describe("RPCStream RPCUint64", () => {
-    test("RPCStream_writeUint64", () => {
-        for (const v of streamTestSuccessCollections.get("uint64")!) {
-            const stream: RPCStream = new RPCStream()
-            expect(stream.writeUint64(v[0] as RPCUint64))
-                .toStrictEqual(RPCStream.StreamWriteOK)
-            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
-                .toStrictEqual(v[1])
-        }
-
-        for (const v of streamTestWriteCollections.get("uint64")!) {
-            const stream: RPCStream = new RPCStream()
-            expect(stream.writeUint64(v[0] as RPCUint64))
-                .toStrictEqual(v[1])
-            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
-            expect(stream.getWritePos())
-                .toStrictEqual(RPCStream["streamPosBody"])
-        }
-    })
-
     test("RPCStream_readUint64", () => {
         for (const v of streamTestSuccessCollections.get("uint64")!) {
             // ok
@@ -983,111 +1070,6 @@ describe("RPCStream RPCUint64", () => {
                 .toStrictEqual([new RPCUint64(NaN), false])
             expect(stream3.getReadPos())
                 .toStrictEqual(RPCStream["streamPosBody"])
-        }
-    })
-})
-
-describe("RPCStream RPCString", () => {
-    test("RPCStream_writeString", () => {
-        for (const v of streamTestSuccessCollections.get("string")!) {
-            const stream: RPCStream = new RPCStream()
-            expect(stream.writeString(v[0] as RPCString))
-                .toStrictEqual(RPCStream.StreamWriteOK)
-            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
-                .toStrictEqual(v[1])
-        }
-
-        for (const v of streamTestWriteCollections.get("string")!) {
-            const stream: RPCStream = new RPCStream()
-            expect(stream.writeString(v[0] as RPCString))
-                .toStrictEqual(v[1])
-            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
-            expect(stream.getWritePos())
-                .toStrictEqual(RPCStream["streamPosBody"])
-        }
-    })
-})
-
-describe("RPCStream RPCBytes", () => {
-    for (const v of streamTestSuccessCollections.get("bytes")!) {
-        const stream: RPCStream = new RPCStream()
-        expect(stream.writeBytes(v[0] as RPCBytes))
-            .toStrictEqual(RPCStream.StreamWriteOK)
-        expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
-            .toStrictEqual(v[1])
-    }
-
-    for (const v of streamTestWriteCollections.get("bytes")!) {
-        const stream: RPCStream = new RPCStream()
-        expect(stream.writeBytes(v[0] as RPCBytes))
-            .toStrictEqual(v[1])
-        expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
-        expect(stream.getWritePos())
-            .toStrictEqual(RPCStream["streamPosBody"])
-    }
-})
-
-describe("RPCStream RPCArray", () => {
-    test("RPCStream_writeArray", () => {
-        for (const v of streamTestSuccessCollections.get("array")!) {
-            const stream: RPCStream = new RPCStream()
-            expect((stream as any).writeArrayInner(v[0] as RPCArray, 64))
-                .toStrictEqual(RPCStream.StreamWriteOK)
-            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
-                .toStrictEqual(v[1])
-        }
-
-        for (const v of streamTestWriteCollections.get("array")!) {
-            const stream: RPCStream = new RPCStream()
-            expect((stream as any).writeArrayInner(v[0] as RPCArray, 64))
-                .toStrictEqual(v[1])
-            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
-            expect(stream.getWritePos())
-                .toStrictEqual(RPCStream["streamPosBody"])
-        }
-    })
-})
-
-describe("RPCStream RPCMap", () => {
-    test("RPCStream_writeMap", () => {
-        for (const v of streamTestSuccessCollections.get("map")!) {
-            const stream: RPCStream = new RPCStream()
-            expect((stream as any).writeMapInner(v[0] as RPCMap, 64))
-                .toStrictEqual(RPCStream.StreamWriteOK)
-            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
-                .toStrictEqual(v[1])
-        }
-
-        for (const v of streamTestWriteCollections.get("map")!) {
-            const stream: RPCStream = new RPCStream()
-            expect((stream as any).writeMapInner(v[0] as RPCMap, 64))
-                .toStrictEqual(v[1])
-            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
-            expect(stream.getWritePos())
-                .toStrictEqual(RPCStream["streamPosBody"])
-        }
-    })
-})
-
-describe("RPCStream RPCAny", () => {
-    test("RPCStream_write", () => {
-        for (const key of [
-            "null", "bool", "float64", "int64", "uint64",
-            "string", "bytes", "array", "map",
-        ]) {
-            for (const v of streamTestSuccessCollections.get(key)!) {
-                const stream: RPCStream = new RPCStream()
-                expect(stream.write(v[0] as RPCAny))
-                    .toStrictEqual(RPCStream.StreamWriteOK)
-                expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
-                    .toStrictEqual(v[1])
-            }
-        }
-
-        for (const v of streamTestWriteCollections.get("value")!) {
-            const stream: RPCStream = new RPCStream()
-            expect(stream.write(v[0] as RPCAny)).toStrictEqual(v[1])
-            expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
         }
     })
 })
