@@ -799,8 +799,8 @@ export class RPCStream {
             totalLen = this.getUint32(this.readPos + 1)[0]
             this.readPos += 5
         } else if (ch === 95) {
-            arrLen = this.getUint32(this.readPos + 1)[0]
-            totalLen = this.getUint32(this.readPos + 5)[0]
+            totalLen = this.getUint32(this.readPos + 1)[0]
+            arrLen = this.getUint32(this.readPos + 5)[0]
             this.readPos += 9
         } else {
             arrLen = 0
@@ -844,8 +844,8 @@ export class RPCStream {
             totalLen = this.getUint32(this.readPos + 1)[0]
             this.readPos += 5
         } else if (ch === 127) {
-            mapLen = this.getUint32(this.readPos + 1)[0]
-            totalLen = this.getUint32(this.readPos + 5)[0]
+            totalLen = this.getUint32(this.readPos + 1)[0]
+            mapLen = this.getUint32(this.readPos + 5)[0]
             this.readPos += 9
         }
 
