@@ -743,6 +743,36 @@ describe("RPCStream Null", () => {
                 .toStrictEqual(v[1])
         }
     })
+
+    test("RPCStream_readNull", () => {
+        for (const v of streamTestSuccessCollections.get("null")!) {
+            // ok
+            const stream1: RPCStream = new RPCStream()
+            expect(stream1.write(v[0] as RPCAny))
+                .toStrictEqual(RPCStream.StreamWriteOK)
+            expect(stream1.readNull()).toStrictEqual(true)
+            expect(stream1.getWritePos()).toStrictEqual(stream1.getReadPos())
+
+            // overflow
+            const stream2: RPCStream = new RPCStream()
+            expect(stream2.write(v[0] as RPCAny))
+                .toStrictEqual(RPCStream.StreamWriteOK)
+            const writePos: number = stream2.getWritePos()
+            for (let idx = RPCStream["streamPosBody"]; idx < writePos; idx++) {
+                stream2.setWritePos(idx)
+                expect(stream2.readNull()).toStrictEqual(false)
+                expect(stream2.getReadPos())
+                    .toStrictEqual(RPCStream["streamPosBody"])
+            }
+
+            // type not match
+            const stream3: RPCStream = new RPCStream();
+            (stream3 as any).putByte(13)
+            expect(stream3.readNull()).toStrictEqual(false)
+            expect(stream3.getReadPos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
+    })
 })
 
 describe("RPCStream RPCBool", () => {
@@ -761,6 +791,38 @@ describe("RPCStream RPCBool", () => {
                 .toStrictEqual(v[1])
             expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
             expect(stream.getWritePos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
+    })
+
+    test("RPCStream_readBool", () => {
+        for (const v of streamTestSuccessCollections.get("bool")!) {
+            // ok
+            const stream1: RPCStream = new RPCStream()
+            expect(stream1.write(v[0] as RPCAny))
+                .toStrictEqual(RPCStream.StreamWriteOK)
+            expect(stream1.readBool())
+                .toStrictEqual([v[0], true])
+            expect(stream1.getWritePos())
+                .toStrictEqual(stream1.getReadPos())
+
+            // overflow
+            const stream2: RPCStream = new RPCStream()
+            expect(stream2.write(v[0] as RPCAny))
+                .toStrictEqual(RPCStream.StreamWriteOK)
+            const writePos: number = stream2.getWritePos()
+            for (let idx = RPCStream["streamPosBody"]; idx < writePos; idx++) {
+                stream2.setWritePos(idx)
+                expect(stream2.readBool()).toStrictEqual([false, false])
+                expect(stream2.getReadPos())
+                    .toStrictEqual(RPCStream["streamPosBody"])
+            }
+
+            // type not match
+            const stream3: RPCStream = new RPCStream();
+            (stream3 as any).putByte(13)
+            expect(stream3.readBool()).toStrictEqual([false, false])
+            expect(stream3.getReadPos())
                 .toStrictEqual(RPCStream["streamPosBody"])
         }
     })
@@ -785,6 +847,38 @@ describe("RPCStream RPCFloat64", () => {
                 .toStrictEqual(RPCStream["streamPosBody"])
         }
     })
+
+    test("RPCStream_readFloat64", () => {
+        for (const v of streamTestSuccessCollections.get("float64")!) {
+            // ok
+            const stream1: RPCStream = new RPCStream()
+            expect(stream1.write(v[0] as RPCAny))
+                .toStrictEqual(RPCStream.StreamWriteOK)
+            expect(stream1.readFloat64()).toStrictEqual([v[0], true])
+            expect(stream1.getWritePos()).toStrictEqual(stream1.getReadPos())
+
+            // overflow
+            const stream2: RPCStream = new RPCStream()
+            expect(stream2.write(v[0] as RPCAny))
+                .toStrictEqual(RPCStream.StreamWriteOK)
+            const writePos: number = stream2.getWritePos()
+            for (let idx = RPCStream["streamPosBody"]; idx < writePos; idx++) {
+                stream2.setWritePos(idx)
+                expect(stream2.readFloat64())
+                    .toStrictEqual([new RPCFloat64(NaN), false])
+                expect(stream2.getReadPos())
+                    .toStrictEqual(RPCStream["streamPosBody"])
+            }
+
+            // type not match
+            const stream3: RPCStream = new RPCStream();
+            (stream3 as any).putByte(13)
+            expect(stream3.readFloat64())
+                .toStrictEqual([new RPCFloat64(NaN), false])
+            expect(stream3.getReadPos())
+                .toStrictEqual(RPCStream["streamPosBody"])
+        }
+    })
 })
 
 describe("RPCStream RPCInt64", () => {
@@ -806,6 +900,38 @@ describe("RPCStream RPCInt64", () => {
                 .toStrictEqual(RPCStream["streamPosBody"])
         }
     })
+
+    test("RPCStream_readInt64", () => {
+        for (const v of streamTestSuccessCollections.get("int64")!) {
+            // ok
+            const stream1: RPCStream = new RPCStream()
+            expect(stream1.write(v[0] as RPCAny))
+                .toStrictEqual(RPCStream.StreamWriteOK)
+            expect(stream1.readInt64()).toStrictEqual([v[0], true])
+            expect(stream1.getWritePos()).toStrictEqual(stream1.getReadPos())
+
+            // overflow
+            const stream2: RPCStream = new RPCStream()
+            expect(stream2.write(v[0] as RPCAny))
+                .toStrictEqual(RPCStream.StreamWriteOK)
+            const writePos: number = stream2.getWritePos()
+            for (let idx = RPCStream["streamPosBody"]; idx < writePos; idx++) {
+                stream2.setWritePos(idx)
+                expect(stream2.readInt64())
+                    .toStrictEqual([new RPCInt64(NaN), false])
+                expect(stream2.getReadPos())
+                    .toStrictEqual(RPCStream["streamPosBody"])
+            }
+
+            // type not match
+            const stream3: RPCStream = new RPCStream();
+            (stream3 as any).putByte(13)
+            expect(stream3.readInt64())
+                .toStrictEqual([new RPCInt64(NaN), false])
+            expect(stream3.getReadPos()).toBe(RPCStream["streamPosBody"])
+        }
+    })
+
 })
 
 describe("RPCStream RPCUint64", () => {
@@ -825,6 +951,34 @@ describe("RPCStream RPCUint64", () => {
             expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
             expect(stream.getWritePos())
                 .toStrictEqual(RPCStream["streamPosBody"])
+        }
+    })
+
+    test("RPCStream_readUint64", () => {
+        for (const v of streamTestSuccessCollections.get("uint64")!) {
+            // ok
+            const stream1: RPCStream = new RPCStream()
+            expect(stream1.write(v[0] as RPCAny)).toStrictEqual(RPCStream.StreamWriteOK)
+            expect(stream1.readUint64()).toStrictEqual([v[0], true])
+            expect(stream1.getWritePos()).toStrictEqual(stream1.getReadPos())
+
+            // overflow
+            const stream2: RPCStream = new RPCStream()
+            expect(stream2.write(v[0] as RPCAny)).toStrictEqual(RPCStream.StreamWriteOK)
+            const writePos: number = stream2.getWritePos()
+            for (let idx = RPCStream["streamPosBody"]; idx < writePos; idx++) {
+                stream2.setWritePos(idx)
+                expect(stream2.readUint64())
+                    .toStrictEqual([new RPCUint64(NaN), false])
+                expect(stream2.getReadPos()).toStrictEqual(RPCStream["streamPosBody"])
+            }
+
+            // type not match
+            const stream3: RPCStream = new RPCStream();
+            (stream3 as any).putByte(13)
+            expect(stream3.readUint64())
+                .toStrictEqual([new RPCUint64(NaN), false])
+            expect(stream3.getReadPos()).toStrictEqual(RPCStream["streamPosBody"])
         }
     })
 })
@@ -927,7 +1081,6 @@ describe("RPCStream RPCAny", () => {
         }
 
         for (const v of streamTestWriteCollections.get("value")!) {
-            console.log(v)
             const stream: RPCStream = new RPCStream()
             expect(stream.write(v[0] as RPCAny)).toStrictEqual(v[1])
             expect(stream.getBuffer().slice(RPCStream["streamPosBody"]))
