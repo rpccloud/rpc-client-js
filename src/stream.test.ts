@@ -1352,6 +1352,13 @@ describe("RPCStream tests", () => {
         const stream2: RPCStream = new RPCStream();
         (stream2 as any).putByte(13)
         expect(stream2.read()).toStrictEqual([null, false])
+
+        // error in stream
+        const stream3: RPCStream = new RPCStream();
+        (stream3 as any).putBytes(new Uint8Array([
+            0x41, 0x07, 0x00, 0x00, 0x00, 0x02, 0x02,
+        ]))
+        expect(stream3.read()).toStrictEqual([null, false])
     })
 })
 
