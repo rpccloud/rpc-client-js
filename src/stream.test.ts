@@ -558,6 +558,15 @@ describe("RPCStream tests", () => {
         }
     })
 
+    test("putBytesTo", () => {
+        const bytes = new Uint8Array([13, 14, 15, 16, 17, 18, 19, 20, 21, 22])
+        const v = new RPCStream()
+        expect(v.putBytesTo(bytes, 0)).toStrictEqual(false)
+        expect(v.putBytesTo(bytes, 100.2)).toStrictEqual(false)
+        expect(v.putBytesTo(bytes, 100)).toStrictEqual(true)
+        expect(v.getBuffer().slice(100)).toStrictEqual(bytes)
+    })
+
     test("peekByte", () => {
         const v = new RPCStream()
         for (let i = 1; i < 2048; i++) {

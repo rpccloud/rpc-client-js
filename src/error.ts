@@ -86,3 +86,34 @@ export class RPCError {
             this.message
     }
 }
+
+const generalErrorSeg = 0
+export const ErrStream = defineError(
+    ErrorType.Security,
+    generalErrorSeg | 1,
+    ErrorLevel.Warn,
+    "stream error",
+)
+
+const jsAdapterErrorSeg = 102 << 8
+
+export const ErrWebSocketWriteStream = defineError(
+    ErrorType.Net,
+    jsAdapterErrorSeg | 1,
+    ErrorLevel.Warn,
+    "",
+)
+
+export const ErrWebSocketOnError = defineError(
+    ErrorType.Net,
+    jsAdapterErrorSeg | 2,
+    ErrorLevel.Warn,
+    "",
+)
+
+export const ErrWebSocketDail = defineError(
+    ErrorType.Net,
+    jsAdapterErrorSeg | 3,
+    ErrorLevel.Warn,
+    "",
+)
