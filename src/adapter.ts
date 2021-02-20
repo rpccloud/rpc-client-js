@@ -50,7 +50,7 @@ export class WebSocketStreamConn implements IStreamConn {
             if (event?.data instanceof ArrayBuffer) {
                 const stream: RPCStream = new RPCStream()
                 stream.setWritePos(0)
-                stream.putBytesTo(new Uint8Array(event?.data), 0)
+                stream.putBytesTo(new Uint8Array(event.data), 0)
                 receiver.OnConnReadStream(this, stream)
             }
         }
@@ -64,6 +64,7 @@ export class WebSocketStreamConn implements IStreamConn {
         }
         ws.onerror = (ev: Event) => {
             receiver.OnConnError(this, ErrWebSocketOnError.addDebug(ev.type))
+            this.close()
         }
     }
 

@@ -86,6 +86,14 @@ describe("WSClientAdapter tests", () => {
         expect(v.open()).toStrictEqual(true)
         expect(v["checkHandler"] as number > 0).toStrictEqual(true)
         expect(v.open()).toStrictEqual(false)
+        const fakeConn = new WebSocketStreamConn(
+            new WebSocket("ws://127.0.0.1:8080"),
+            new TestReceiver(),
+        )
+        await sleep(1000)
+        fakeConn["status"] = WebSocketStreamConn["StatusOpening"]
+        v["conn"]= fakeConn
+        await sleep(3000)
         expect(v.close()).toStrictEqual(true)
     })
 
@@ -137,6 +145,32 @@ describe("WebSocketStreamConn tests", () => {
         /* eslint-enable @typescript-eslint/no-explicit-any */
         onMessage({"data": arrayBuffer} as MessageEvent)
         expect(callbackCount).toStrictEqual(1)
+    })
+
+    test("WebSocketStreamConn_new onmessage error", async () => {
+        let callbackCount = 0
+        const ws = new WebSocket("ws://127.0.0.1:8080")
+        const receiver = new TestReceiver()
+        const v = new WebSocketStreamConn(ws, receiver)
+        const stream = new RPCStream()
+        stream.writeString("test")
+        const streamBuffer = stream.getBuffer()
+        const arrayBuffer = new ArrayBuffer(stream.getWritePos())
+        const arrayBufferView = new Uint8Array(arrayBuffer)
+        for (let i = 0; i < arrayBuffer.byteLength; i++) {
+            arrayBufferView[i] = streamBuffer[i]
+        }
+
+        receiver.onConnReadStream = () => {
+            callbackCount++
+        }
+
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        const onMessage = ws.onmessage as any
+        /* eslint-enable @typescript-eslint/no-explicit-any */
+        onMessage(null)
+        expect(callbackCount).toStrictEqual(0)
+        v.close()
     })
 
     test("WebSocketStreamConn_new onopen", async () => {
