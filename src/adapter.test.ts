@@ -6,12 +6,12 @@ import {
 } from "./adapter"
 import {RPCStream} from "./stream"
 import {
-    ErrJSUnsupportedProtocol,
+    ErrJSUnsupportedProtocol, ErrJSWebSocketDail,
     ErrJSWebSocketOnError,
-    ErrJSWebSocketWriteStream,
+    ErrJSWebSocketWriteStream, ErrStream,
     RPCError
 } from "./error"
-import {sleep} from "./utils"
+import {getTimeNowMS, sleep} from "./utils"
 
 class TestReceiver implements IReceiver {
     public onConnOpen: (_: IStreamConn) => void
@@ -43,75 +43,6 @@ class TestReceiver implements IReceiver {
     }
 }
 
-describe("ClientAdapter tests", () => {
-    test("ClientAdapter_new", async () => {
-        const receiver = new TestReceiver()
-        const v = new ClientAdapter("ws://127.0.0.1:8080", receiver)
-        expect(v["checkHandler"]).toStrictEqual(null)
-        expect(v["connectString"]).toStrictEqual("ws://127.0.0.1:8080")
-        expect(v["receiver"]).toStrictEqual(receiver)
-        expect(v["conn"]).toStrictEqual(null)
-    })
-
-    test("ClientAdapter_open error connectString", async () => {
-        const receiver = new TestReceiver()
-        let errCount = 0
-        receiver.onConnError = (_, e) => {
-            expect(e).toStrictEqual(ErrJSUnsupportedProtocol.addDebug(
-                "unsupported protocol wsd",
-            ))
-            errCount++
-        }
-        const v = new ClientAdapter("wsd://127.0.0.1:8080", receiver)
-
-        expect(v.open()).toStrictEqual(true)
-        await sleep(4000)
-        expect(v.close()).toStrictEqual(true)
-
-        expect(errCount).toStrictEqual(2)
-    })
-
-    test("ClientAdapter_open error server", async () => {
-        const receiver = new TestReceiver()
-        let errCount = 0
-        receiver.onConnError = (_, e) => {
-            expect(e).toStrictEqual(ErrJSWebSocketOnError.addDebug("error"))
-            errCount++
-        }
-        const v = new ClientAdapter("ws://127.0.0.1:8080", receiver)
-
-        expect(v.open()).toStrictEqual(true)
-        await sleep(4000)
-        expect(v.close()).toStrictEqual(true)
-
-        expect(errCount).toStrictEqual(2)
-    })
-
-    test("ClientAdapter_open", async () => {
-        const v = new ClientAdapter("ws://127.0.0.1:8080", new TestReceiver())
-        expect(v.open()).toStrictEqual(true)
-        expect(v["checkHandler"] as number > 0).toStrictEqual(true)
-        expect(v.open()).toStrictEqual(false)
-        const fakeConn = new WebSocketStreamConn(
-            new WebSocket("ws://127.0.0.1:8080"),
-            new TestReceiver(),
-        )
-        await sleep(1000)
-        fakeConn["status"] = WebSocketStreamConn["StatusOpening"]
-        v["conn"] = fakeConn
-        await sleep(3000)
-        expect(v.close()).toStrictEqual(true)
-    })
-
-    test("ClientAdapter_close", async () => {
-        const v = new ClientAdapter("ws://127.0.0.1:8080", new TestReceiver())
-        expect(v.open()).toStrictEqual(true)
-        expect(v.close()).toStrictEqual(true)
-        expect(v["checkHandler"] as number === null).toStrictEqual(true)
-        expect(v.close()).toStrictEqual(false)
-    })
-})
-
 describe("WebSocketStreamConn tests", () => {
     test("WebSocketStreamConn_new", async () => {
         const ws = new WebSocket("ws://127.0.0.1:8080")
@@ -123,34 +54,6 @@ describe("WebSocketStreamConn tests", () => {
         expect(!!ws.onopen).toStrictEqual(true)
         expect(!!ws.onclose).toStrictEqual(true)
         expect(!!ws.onerror).toStrictEqual(true)
-    })
-
-    test("WebSocketStreamConn_new onmessage ok", async () => {
-        let callbackCount = 0
-        const ws = new WebSocket("ws://127.0.0.1:8080")
-        const receiver = new TestReceiver()
-        const v = new WebSocketStreamConn(ws, receiver)
-        const stream = new RPCStream()
-        stream.writeString("test")
-        const streamBuffer = stream.getBuffer()
-        const arrayBuffer = new ArrayBuffer(stream.getWritePos())
-        const arrayBufferView = new Uint8Array(arrayBuffer)
-        for (let i = 0; i < arrayBuffer.byteLength; i++) {
-            arrayBufferView[i] = streamBuffer[i]
-        }
-
-        receiver.onConnReadStream = (streamConn, cbStream) => {
-            expect(streamConn).toStrictEqual(v)
-            expect(cbStream.getBuffer())
-                .toStrictEqual(stream.getBuffer())
-            callbackCount++
-        }
-
-        /* eslint-disable @typescript-eslint/no-explicit-any */
-        const onMessage = ws.onmessage as any
-        /* eslint-enable @typescript-eslint/no-explicit-any */
-        onMessage({"data": arrayBuffer} as MessageEvent)
-        expect(callbackCount).toStrictEqual(1)
     })
 
     test("WebSocketStreamConn_new onmessage error", async () => {
@@ -167,6 +70,93 @@ describe("WebSocketStreamConn tests", () => {
             arrayBufferView[i] = streamBuffer[i]
         }
 
+        receiver.onConnError = (streamConn, err) => {
+            if (callbackCount === 0) {
+                expect(streamConn).toStrictEqual(v)
+                expect(err).toStrictEqual(ErrStream)
+                callbackCount++
+            }
+        }
+
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        const onMessage = ws.onmessage as any
+        /* eslint-enable @typescript-eslint/no-explicit-any */
+        onMessage(null)
+        expect(callbackCount).toStrictEqual(1)
+        v.close()
+    })
+
+    test("WebSocketStreamConn_new onmessage buffer is too short", async () => {
+        const ws = new WebSocket("ws://127.0.0.1:8080")
+        const receiver = new TestReceiver()
+        const v = new WebSocketStreamConn(ws, receiver)
+        const streamBuffer = new Uint8Array([1,2,3,4,5,6])
+        const arrayBuffer = new ArrayBuffer(streamBuffer.length)
+        const arrayBufferView = new Uint8Array(arrayBuffer)
+        for (let i = 0; i < arrayBuffer.byteLength; i++) {
+            arrayBufferView[i] = streamBuffer[i]
+        }
+
+        let callbackCount = 0
+        receiver.onConnError = (streamConn, err) => {
+            if (callbackCount === 0) {
+                expect(streamConn).toStrictEqual(v)
+                expect(err).toStrictEqual(ErrStream)
+                callbackCount++
+            }
+        }
+
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        const onMessage = ws.onmessage as any
+        /* eslint-enable @typescript-eslint/no-explicit-any */
+        onMessage({"data": arrayBuffer} as MessageEvent)
+        expect(callbackCount).toStrictEqual(1)
+    })
+
+    test("WebSocketStreamConn_new onmessage checkStream error", async () => {
+        const ws = new WebSocket("ws://127.0.0.1:8080")
+        const receiver = new TestReceiver()
+        const v = new WebSocketStreamConn(ws, receiver)
+        const stream = new RPCStream()
+        stream.writeString("test")
+        const streamBuffer = stream.getBuffer()
+        const arrayBuffer = new ArrayBuffer(stream.getWritePos())
+        const arrayBufferView = new Uint8Array(arrayBuffer)
+        for (let i = 0; i < arrayBuffer.byteLength; i++) {
+            arrayBufferView[i] = streamBuffer[i]
+        }
+
+        let callbackCount = 0
+        receiver.onConnError = (streamConn, err) => {
+            if (callbackCount === 0) {
+                expect(streamConn).toStrictEqual(v)
+                expect(err).toStrictEqual(ErrStream)
+                callbackCount++
+            }
+        }
+
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        const onMessage = ws.onmessage as any
+        /* eslint-enable @typescript-eslint/no-explicit-any */
+        onMessage({"data": arrayBuffer} as MessageEvent)
+        expect(callbackCount).toStrictEqual(1)
+    })
+
+    test("WebSocketStreamConn_new onmessage checkStream ok", async () => {
+        const ws = new WebSocket("ws://127.0.0.1:8080")
+        const receiver = new TestReceiver()
+        const v = new WebSocketStreamConn(ws, receiver)
+        const stream = new RPCStream()
+        stream.writeString("test")
+        stream.buildStreamCheck()
+        const streamBuffer = stream.getBuffer()
+        const arrayBuffer = new ArrayBuffer(stream.getWritePos())
+        const arrayBufferView = new Uint8Array(arrayBuffer)
+        for (let i = 0; i < arrayBuffer.byteLength; i++) {
+            arrayBufferView[i] = streamBuffer[i]
+        }
+
+        let callbackCount = 0
         receiver.onConnReadStream = () => {
             callbackCount++
         }
@@ -174,8 +164,8 @@ describe("WebSocketStreamConn tests", () => {
         /* eslint-disable @typescript-eslint/no-explicit-any */
         const onMessage = ws.onmessage as any
         /* eslint-enable @typescript-eslint/no-explicit-any */
-        onMessage(null)
-        expect(callbackCount).toStrictEqual(0)
+        onMessage({"data": arrayBuffer} as MessageEvent)
+        expect(callbackCount).toStrictEqual(1)
         v.close()
     })
 
@@ -247,10 +237,12 @@ describe("WebSocketStreamConn tests", () => {
         const receiver = new TestReceiver()
         const v = new WebSocketStreamConn(ws, receiver)
         receiver.onConnError = (streamConn, err) => {
-            expect(streamConn).toStrictEqual(v)
-            expect(err).toStrictEqual(ErrJSWebSocketWriteStream
-                .addDebug("InvalidStateError: Still in CONNECTING state."))
-            callbackCount++
+            if (callbackCount === 0) {
+                expect(streamConn).toStrictEqual(v)
+                expect(err).toStrictEqual(ErrJSWebSocketWriteStream
+                    .addDebug("InvalidStateError: Still in CONNECTING state."))
+                callbackCount++
+            }
         }
         expect(v.writeStream(new RPCStream())).toStrictEqual(false)
         expect(callbackCount).toStrictEqual(1)
@@ -289,5 +281,123 @@ describe("WebSocketStreamConn tests", () => {
         expect(v.isClosed()).toStrictEqual(false)
         v["status"] = WebSocketStreamConn["StatusClosed"]
         expect(v.isClosed()).toStrictEqual(true)
+    })
+
+    test("WebSocketStreamConn_isActive", async () => {
+        const ws = new WebSocket("ws://127.0.0.1:8080")
+        const receiver = new TestReceiver()
+        const v = new WebSocketStreamConn(ws, receiver)
+        expect(v.isActive(getTimeNowMS(), 1000)).toStrictEqual(true)
+        expect(v.isActive(getTimeNowMS() + 2000, 1000)).toStrictEqual(false)
+    })
+})
+
+
+describe("ClientAdapter tests", () => {
+    test("ClientAdapter_new", async () => {
+        const receiver = new TestReceiver()
+        const v = new ClientAdapter("ws://127.0.0.1:8080", receiver)
+        expect(v["checkHandler"]).toStrictEqual(null)
+        expect(v["connectString"]).toStrictEqual("ws://127.0.0.1:8080")
+        expect(v["receiver"]).toStrictEqual(receiver)
+        expect(v["conn"]).toStrictEqual(null)
+    })
+
+    test("ClientAdapter_open error connectString", async () => {
+        const receiver = new TestReceiver()
+        let errCount = 0
+        receiver.onConnError = (_, e) => {
+            expect(e).toStrictEqual(ErrJSUnsupportedProtocol.addDebug(
+                "unsupported protocol wsd",
+            ))
+            errCount++
+        }
+        const v = new ClientAdapter("wsd://127.0.0.1:8080", receiver)
+
+        expect(v.open()).toStrictEqual(true)
+        await sleep(4000)
+        expect(v.close()).toStrictEqual(true)
+
+        expect(errCount).toStrictEqual(2)
+    })
+
+    test("ClientAdapter_open error server", async () => {
+        const receiver = new TestReceiver()
+        let errCount = 0
+        receiver.onConnError = (_, e) => {
+            expect(e).toStrictEqual(ErrJSWebSocketOnError.addDebug("error"))
+            errCount++
+        }
+        const v = new ClientAdapter("ws://127.0.0.1:8080", receiver)
+
+        expect(v.open()).toStrictEqual(true)
+        await sleep(4000)
+        expect(v.close()).toStrictEqual(true)
+
+        expect(errCount).toStrictEqual(2)
+    })
+
+    test("ClientAdapter_open", async () => {
+        const v = new ClientAdapter("ws://127.0.0.1:8080", new TestReceiver())
+        expect(v.open()).toStrictEqual(true)
+        expect(v["checkHandler"] as number > 0).toStrictEqual(true)
+        expect(v.open()).toStrictEqual(false)
+        const fakeConn = new WebSocketStreamConn(
+            new WebSocket("ws://127.0.0.1:8080"),
+            new TestReceiver(),
+        )
+        await sleep(1000)
+        fakeConn["status"] = WebSocketStreamConn["StatusOpening"]
+        v["conn"] = fakeConn
+        await sleep(3000)
+        expect(v.close()).toStrictEqual(true)
+    })
+
+    test("ClientAdapter_close", async () => {
+        const v = new ClientAdapter("ws://127.0.0.1:8080", new TestReceiver())
+        expect(v.open()).toStrictEqual(true)
+        expect(v.close()).toStrictEqual(true)
+        expect(v["checkHandler"] as number === null).toStrictEqual(true)
+        expect(v.close()).toStrictEqual(false)
+    })
+
+    test("ClientAdapter_dial ws ok", async () => {
+        const receiver = new TestReceiver()
+        const v = new ClientAdapter("ws://127.0.0.1:8080", receiver)
+        expect(v["dial"]() !== null).toStrictEqual(true)
+    })
+
+    test("ClientAdapter_dial wss ok", async () => {
+        const receiver = new TestReceiver()
+        const v = new ClientAdapter("wss://127.0.0.1:8080", receiver)
+        expect(v["dial"]() !== null).toStrictEqual(true)
+    })
+
+    test("ClientAdapter_dial unknown protocol", async () => {
+        let errCount = 0
+        const receiver = new TestReceiver()
+        const v = new ClientAdapter("abc://127.0.0.1:8080", receiver)
+        receiver.onConnError = (_, e) => {
+            expect(e).toStrictEqual(ErrJSUnsupportedProtocol.addDebug(
+                "unsupported protocol abc"
+            ))
+            errCount++
+        }
+        expect(v["dial"]() === null).toStrictEqual(true)
+        expect(errCount).toStrictEqual(1)
+    })
+
+    test("ClientAdapter_dial panic", async () => {
+        let errCount = 0
+        const receiver = new TestReceiver()
+        const v = new ClientAdapter("ws:@@@@@@@@@", receiver)
+        receiver.onConnError = (_, e) => {
+            expect(e).toStrictEqual(ErrJSWebSocketDail.addDebug(
+                "SyntaxError: The URL 'ws:@@@@@@@@@' is invalid."
+            ))
+            errCount++
+        }
+        expect(v["dial"]() === null).toStrictEqual(true)
+        expect(errCount).toStrictEqual(1)
     })
 })

@@ -62,6 +62,8 @@ export class WebSocketStreamConn implements IStreamConn {
                 } else {
                     receiver.OnConnError(this, ErrStream)
                 }
+            } else {
+                receiver.OnConnError(this, ErrStream)
             }
         }
         ws.onopen = () => {
@@ -131,7 +133,7 @@ export class ClientAdapter {
                 if (this.conn === null || this.conn.isClosed()) {
                     if (nowMS - connectMS > 3000) {
                         connectMS = nowMS
-                        this.conn = this.dail()
+                        this.conn = this.dial()
                     }
                 }
             }, 300)
@@ -157,9 +159,8 @@ export class ClientAdapter {
         return true
     }
 
-    private dail(): IStreamConn | null {
+    private dial(): IStreamConn | null {
         try {
-
             const protocol = this.connectString.trim().split(":")[0]
 
             if (protocol === "ws" || protocol === "wss") {
@@ -175,7 +176,6 @@ export class ClientAdapter {
             )
             return null
         } catch (e) {
-            console.log(e)
             this.receiver.OnConnError(
                 null, ErrJSWebSocketDail.addDebug(e.toString()),
             )
