@@ -32,7 +32,7 @@ export class RPCError {
     }
 
     public getCode(): number {
-        return this.code
+        return this.code & 0xFFFFFF
     }
 
     public getMessage(): string {
@@ -95,25 +95,54 @@ export const ErrStream = defineError(
     "stream error",
 )
 
-const jsAdapterErrorSeg = 102 << 8
+// ErrUnsupportedValue ...
+export const ErrUnsupportedValue = defineError(
+    ErrorType.Develop,
+    generalErrorSeg | 2,
+    ErrorLevel.Error,
+    "",
+)
 
-export const ErrWebSocketWriteStream = defineError(
+const clientErrorSeg = 4 << 8
+export const ErrClientTimeout = defineError(
+    ErrorType.Net,
+    clientErrorSeg | 1,
+    ErrorLevel.Warn,
+    "timeout",
+)
+
+export const ErrClientConfig = defineError(
+    ErrorType.Config,
+    clientErrorSeg | 2,
+    ErrorLevel.Warn,
+    "client config error",
+)
+
+const jsAdapterErrorSeg = 102 << 8
+export const ErrJSUnsupportedProtocol = defineError(
     ErrorType.Net,
     jsAdapterErrorSeg | 1,
     ErrorLevel.Warn,
     "",
 )
 
-export const ErrWebSocketOnError = defineError(
+export const ErrJSWebSocketWriteStream = defineError(
     ErrorType.Net,
     jsAdapterErrorSeg | 2,
     ErrorLevel.Warn,
     "",
 )
 
-export const ErrWebSocketDail = defineError(
+export const ErrJSWebSocketOnError = defineError(
     ErrorType.Net,
     jsAdapterErrorSeg | 3,
+    ErrorLevel.Warn,
+    "",
+)
+
+export const ErrJSWebSocketDail = defineError(
+    ErrorType.Net,
+    jsAdapterErrorSeg | 4,
     ErrorLevel.Warn,
     "",
 )

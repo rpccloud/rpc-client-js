@@ -1,8 +1,9 @@
 import {RPCStream} from "./stream"
 import {
-    ErrWebSocketDail,
-    ErrWebSocketOnError,
-    ErrWebSocketWriteStream,
+    ErrJSUnsupportedProtocol,
+    ErrJSWebSocketDail,
+    ErrJSWebSocketOnError,
+    ErrJSWebSocketWriteStream, ErrStream,
     RPCError
 } from "./error"
 import {getTimeNowMS} from "./utils"
@@ -23,12 +24,11 @@ export interface IStreamConn {
     writeStream(stream: RPCStream): boolean
 
     close(): void
-}
 
-export interface IAdapter {
-    open(): boolean
+    isClosed(): boolean
 
-    close(): boolean
+    // IsActive ...
+    isActive(nowMS: number, timeoutMS: number): boolean
 }
 
 export class WebSocketStreamConn implements IStreamConn {
@@ -40,18 +40,28 @@ export class WebSocketStreamConn implements IStreamConn {
     private readonly ws: WebSocket
     private status: number
     private receiver: IReceiver
+    private activeTimeMS: number
 
     public constructor(ws: WebSocket, receiver: IReceiver) {
         ws.binaryType = "arraybuffer"
         this.ws = ws
         this.status = WebSocketStreamConn.StatusOpening
         this.receiver = receiver
+        this.activeTimeMS = getTimeNowMS()
         ws.onmessage = (event?: MessageEvent) => {
             if (event?.data instanceof ArrayBuffer) {
                 const stream: RPCStream = new RPCStream()
                 stream.setWritePos(0)
-                stream.putBytesTo(new Uint8Array(event.data), 0)
-                receiver.OnConnReadStream(this, stream)
+                if (stream.putBytesTo(new Uint8Array(event.data), 0)) {
+                    if (stream.checkStream()) {
+                        this.activeTimeMS =  getTimeNowMS()
+                        receiver.OnConnReadStream(this, stream)
+                    } else {
+                        receiver.OnConnError(this, ErrStream)
+                    }
+                } else {
+                    receiver.OnConnError(this, ErrStream)
+                }
             }
         }
         ws.onopen = () => {
@@ -63,7 +73,7 @@ export class WebSocketStreamConn implements IStreamConn {
             this.status = WebSocketStreamConn.StatusClosed
         }
         ws.onerror = (ev: Event) => {
-            receiver.OnConnError(this, ErrWebSocketOnError.addDebug(ev.type))
+            receiver.OnConnError(this, ErrJSWebSocketOnError.addDebug(ev.type))
             this.close()
         }
     }
@@ -74,7 +84,7 @@ export class WebSocketStreamConn implements IStreamConn {
             return true
         } catch (e) {
             this.receiver.OnConnError(
-                this, ErrWebSocketWriteStream.addDebug(e.toString()),
+                this, ErrJSWebSocketWriteStream.addDebug(e.toString()),
             )
             return false
         }
@@ -94,10 +104,14 @@ export class WebSocketStreamConn implements IStreamConn {
     public isClosed(): boolean {
         return this.status === WebSocketStreamConn.StatusClosed
     }
+
+    public isActive(nowMS: number, timeoutMS: number): boolean {
+        return nowMS-this.activeTimeMS < timeoutMS
+    }
 }
 
-export class WSClientAdapter implements IAdapter {
-    private conn: WebSocketStreamConn | null
+export class ClientAdapter {
+    private conn: IStreamConn | null
     private checkHandler: number | null
     private readonly connectString: string
     private readonly receiver: IReceiver
@@ -117,17 +131,7 @@ export class WSClientAdapter implements IAdapter {
                 if (this.conn === null || this.conn.isClosed()) {
                     if (nowMS - connectMS > 3000) {
                         connectMS = nowMS
-                        try {
-                            const webSocket = new WebSocket(this.connectString)
-                            this.conn = new WebSocketStreamConn(
-                                webSocket,
-                                this.receiver,
-                            )
-                        } catch (e) {
-                            this.receiver.OnConnError(
-                                null, ErrWebSocketDail.addDebug(e.toString()),
-                            )
-                        }
+                        this.conn = this.dail()
                     }
                 }
             }, 300)
@@ -152,4 +156,31 @@ export class WSClientAdapter implements IAdapter {
 
         return true
     }
+
+    private dail(): IStreamConn | null {
+        try {
+
+            const protocol = this.connectString.trim().split(":")[0]
+
+            if (protocol === "ws" || protocol === "wss") {
+                const ws = new WebSocket(this.connectString)
+                return new WebSocketStreamConn(ws, this.receiver)
+            }
+
+            this.receiver.OnConnError(
+                null,
+                ErrJSUnsupportedProtocol.addDebug(
+                    `unsupported protocol ${protocol}`,
+                ),
+            )
+            return null
+        } catch (e) {
+            console.log(e)
+            this.receiver.OnConnError(
+                null, ErrJSWebSocketDail.addDebug(e.toString()),
+            )
+            return null
+        }
+    }
 }
+

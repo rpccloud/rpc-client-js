@@ -456,6 +456,16 @@ describe("RPCStream tests", () => {
         expect(RPCStream["streamPosCallbackID"]).toStrictEqual(38)
         expect(RPCStream["streamPosBody"]).toStrictEqual(48)
 
+        expect(RPCStream.StreamKindConnectRequest).toStrictEqual(1)
+        expect(RPCStream.StreamKindConnectResponse).toStrictEqual(2)
+        expect(RPCStream.StreamKindPing).toStrictEqual(3)
+        expect(RPCStream.StreamKindPong).toStrictEqual(4)
+        expect(RPCStream.StreamKindRPCRequest).toStrictEqual(5)
+        expect(RPCStream.StreamKindRPCResponseOK).toStrictEqual(6)
+        expect(RPCStream.StreamKindRPCResponseError).toStrictEqual(7)
+        expect(RPCStream.StreamKindRPCBoardCast).toStrictEqual(8)
+        expect(RPCStream.StreamKindSystemErrorReport).toStrictEqual(9)
+
         expect(RPCStream["StreamWriteOK"]).toStrictEqual("")
         expect(RPCStream["StreamWriteOverflow"]).toStrictEqual(" overflows")
         expect(RPCStream["StreamWriteUnsupportedValue"])
@@ -618,6 +628,18 @@ describe("RPCStream tests", () => {
     test("getVersion", () => {
         const v = new RPCStream()
         expect(v.getVersion()).toStrictEqual(RPCStream["streamVersion"])
+    })
+
+    test("getKind", () => {
+        const v = new RPCStream()
+        v.setKind(RPCStream.StreamKindPing)
+        expect(v.getKind()).toStrictEqual(RPCStream.StreamKindPing)
+    })
+
+    test("setKind", () => {
+        const v = new RPCStream()
+        v.setKind(RPCStream.StreamKindPing)
+        expect(v.getKind()).toStrictEqual(RPCStream.StreamKindPing)
     })
 
     test("buildStreamCheck", () => {
