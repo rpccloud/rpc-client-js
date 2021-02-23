@@ -11,23 +11,25 @@ import {
 } from "./error"
 import {getTimeNowMS} from "./utils"
 
-// ParseResponseStream ...
-function ParseResponseStream(stream: RPCStream): [RPCAny, RPCError | null] {
+export function parseResponseStream(
+    stream: RPCStream,
+): [RPCAny, RPCError | null] {
     switch (stream.getKind()) {
     case RPCStream.StreamKindRPCResponseOK: {
         const [v, ok] = stream.read()
-        if (ok) {
+        if (ok && stream.isReadFinish()) {
             return [v, null]
         }
         return [null, ErrStream]
     }
     case RPCStream.StreamKindSystemErrorReport:
     case RPCStream.StreamKindRPCResponseError: {
-        const [errCode, ok1] = stream.readUint64()
-        const [errMessage, ok2] = stream.readString()
+        const [code, ok1] = stream.readUint64()
+        const [message, ok2] = stream.readString()
+        const errCode = code.toNumber()
 
-        if (ok1 && ok2 && stream.isReadFinish()) {
-            return [null, new RPCError(errCode.toNumber(), errMessage)]
+        if (ok1 && ok2 && stream.isReadFinish() && errCode < 4294967296) {
+            return [null, new RPCError(errCode, message)]
         }
         return [null, ErrStream]
     }
@@ -37,26 +39,23 @@ function ParseResponseStream(stream: RPCStream): [RPCAny, RPCError | null] {
 }
 
 export interface IStreamHub {
-    OnReceiveStream(stream: RPCStream | null): void
+    OnReceiveStream(stream: RPCStream): void
 }
 
-// LogToScreenErrorStreamHub ...
-class LogToScreenErrorStreamHub implements IStreamHub {
+export class LogToScreenErrorStreamHub implements IStreamHub {
     private readonly prefix: string
 
     public constructor(prefix: string) {
         this.prefix = prefix
     }
 
-    public OnReceiveStream(stream: RPCStream | null): void {
-        if (stream) {
-            const kind = stream.getKind()
-            if (kind === RPCStream.StreamKindSystemErrorReport ||
-                kind === RPCStream.StreamKindRPCResponseError) {
-                const err = ParseResponseStream(stream)[1]
-                if (err !== null) {
-                    console.log(`[${this.prefix} Error]: ${err.toString()}`)
-                }
+    public OnReceiveStream(stream: RPCStream): void {
+        const kind = stream.getKind()
+        if (kind === RPCStream.StreamKindSystemErrorReport ||
+            kind === RPCStream.StreamKindRPCResponseError) {
+            const err = parseResponseStream(stream)[1]
+            if (err !== null) {
+                console.log(`[${this.prefix} Error]: ${err.toString()}`)
             }
         }
     }
@@ -90,7 +89,7 @@ class SendItem {
     }
 
     back(stream: RPCStream): boolean {
-        const [ret, err] = ParseResponseStream(stream)
+        const [ret, err] = parseResponseStream(stream)
 
         if (err !== null) {
             this.deferred.doReject(err)
@@ -199,7 +198,7 @@ class Client implements IReceiver {
     private preSendTail: SendItem | null
     private channels: Array<Channel> | null
     private lastPingTimeMS: number
-    private subscriptionMap: Map<string, Array<Subscription>>
+    private readonly subscriptionMap: Map<string, Array<Subscription>>
     private errorHub: IStreamHub
     private timer: number | null
 
