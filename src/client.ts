@@ -14,26 +14,30 @@ import {getTimeNowMS} from "./utils"
 export function parseResponseStream(
     stream: RPCStream,
 ): [RPCAny, RPCError | null] {
-    switch (stream.getKind()) {
-    case RPCStream.StreamKindRPCResponseOK: {
-        const [v, ok] = stream.read()
-        if (ok && stream.isReadFinish()) {
-            return [v, null]
+    if (stream) {
+        switch (stream.getKind()) {
+        case RPCStream.StreamKindRPCResponseOK: {
+            const [v, ok] = stream.read()
+            if (ok && stream.isReadFinish()) {
+                return [v, null]
+            }
+            return [null, ErrStream]
         }
-        return [null, ErrStream]
-    }
-    case RPCStream.StreamKindSystemErrorReport:
-    case RPCStream.StreamKindRPCResponseError: {
-        const [code, ok1] = stream.readUint64()
-        const [message, ok2] = stream.readString()
-        const errCode = code.toNumber()
+        case RPCStream.StreamKindSystemErrorReport:
+        case RPCStream.StreamKindRPCResponseError: {
+            const [code, ok1] = stream.readUint64()
+            const [message, ok2] = stream.readString()
+            const errCode = code.toNumber()
 
-        if (ok1 && ok2 && stream.isReadFinish() && errCode < 4294967296) {
-            return [null, new RPCError(errCode, message)]
+            if (ok1 && ok2 && stream.isReadFinish() && errCode < 4294967296) {
+                return [null, new RPCError(errCode, message)]
+            }
+            return [null, ErrStream]
         }
-        return [null, ErrStream]
-    }
-    default:
+        default:
+            return [null, ErrStream]
+        }
+    } else {
         return [null, ErrStream]
     }
 }
@@ -68,6 +72,7 @@ class Config {
     heartbeatTimeoutMS = 0
 }
 
+
 // SendItem ...
 class SendItem {
     private isRunning: boolean
@@ -89,21 +94,23 @@ class SendItem {
     }
 
     back(stream: RPCStream): boolean {
-        const [ret, err] = parseResponseStream(stream)
+        if (stream && this.isRunning) {
+            const [ret, err] = parseResponseStream(stream)
 
-        if (err !== null) {
-            this.deferred.doReject(err)
-            return false
+            if (err !== null) {
+                this.deferred.doReject(err)
+            } else {
+                this.deferred.doResolve(ret)
+            }
+
+            return true
         }
 
-        this.deferred.doResolve(ret)
-        return true
+        return false
     }
 
     checkTime(nowMS: number): boolean {
         if (nowMS - this.startTimeMS > this.timeoutMS && this.isRunning) {
-            this.isRunning = false
-
             // return timeout stream
             const stream = new RPCStream()
             stream.setKind(RPCStream.StreamKindRPCResponseError)
@@ -111,6 +118,8 @@ class SendItem {
             stream.writeUint64(toRPCUint64(ErrClientTimeout.getCode()))
             stream.writeString(ErrClientTimeout.getMessage())
             this.back(stream)
+
+            this.isRunning = false
             return true
         }
 
@@ -179,7 +188,7 @@ class Subscription {
         this.onMessage = onMessage
     }
 
-    close() {
+    close(): void {
         if (this.client !== null) {
             this.client.unsubscribe(this.id)
             this.id = 0
@@ -188,7 +197,7 @@ class Subscription {
     }
 }
 
-class Client implements IReceiver {
+export class Client implements IReceiver {
     private seed: number
     private config: Config
     private sessionString: string
@@ -336,14 +345,20 @@ class Client implements IReceiver {
 
     unsubscribe(id: number): void {
         for (const [key, list] of this.subscriptionMap) {
-            this.subscriptionMap.set(
-                key,
-                list.filter(v => v.id !== id),
-            )
+            const newList = list.filter(v => v.id !== id)
+
+            if (newList.length > 0) {
+                this.subscriptionMap.set(key, newList)
+            } else {
+                this.subscriptionMap.delete(key)
+            }
         }
     }
 
-    public async send(timeoutMS: number, target: string, ...args: Array<RPCAny>) {
+    public async send(
+        timeoutMS: number,
+        target: string,
+        ...args: Array<RPCAny>): Promise<RPCAny> {
         const item = new SendItem(timeoutMS)
         item.sendStream.setKind(RPCStream.StreamKindRPCRequest)
 
@@ -497,3 +512,8 @@ class Client implements IReceiver {
     }
 }
 
+export const __test__ = {
+    SendItem,
+    Channel,
+    Subscription,
+}
