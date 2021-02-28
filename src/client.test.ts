@@ -1,12 +1,228 @@
 import {RPCStream} from "./stream"
-import {toRPCInt64, toRPCUint64} from "./types"
-import {ErrClientTimeout, ErrStream} from "./error"
+import {RPCAny, toRPCInt64, toRPCUint64} from "./types"
+import {
+    ErrClientTimeout,
+    ErrStream,
+    ErrUnsupportedValue,
+} from "./error"
 import {
     __test__, Client,
     LogToScreenErrorStreamHub,
     parseResponseStream
 } from "./client"
 import {getTimeNowMS, sleep} from "./utils"
+import {IStreamConn, WebSocketStreamConn} from "./adapter"
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+class FakeConn implements IStreamConn {
+    onWriteStream: ((stream: RPCStream) => void) | null = null
+    onClose: (() => void) | null = null
+    onIsClosed: (() => boolean) | null = null
+    onIsActive: ((nowMS: number, timeoutMS: number) => boolean) | null = null
+
+    writeStream(stream: RPCStream): boolean {
+        if (this.onWriteStream) {
+            stream.buildStreamCheck()
+            this.onWriteStream(stream)
+            return true
+        } else {
+            return false
+        }
+    }
+
+    close(): void {
+        if (this.onClose) {
+            this.onClose()
+        }
+    }
+
+    isClosed(): boolean {
+        if (this.onIsClosed) {
+            return this.onIsClosed()
+        }
+        return true
+    }
+
+    isActive(nowMS: number, timeoutMS: number): boolean {
+        if (this.onIsActive) {
+            return this.onIsActive(nowMS, timeoutMS)
+        }
+        return false
+    }
+}
+
+class TestServer {
+    onRPCRequest: (stream: RPCStream) => RPCStream | null
+    onConnectRequest: (stream: RPCStream) => RPCStream | null
+    onPing: (stream: RPCStream) => RPCStream | null
+
+    constructor(onRPCRequest: (stream: RPCStream) => RPCStream | null) {
+        this.onRPCRequest = onRPCRequest
+        this.onConnectRequest = (stream: RPCStream): RPCStream | null => {
+            if (stream.getCallbackID() !== 0) {
+                return null
+            }
+
+            const [sessionString, ok] = stream.readString()
+            if (!ok || !stream.isReadFinish()) {
+                return null
+            }
+
+            const ret = new RPCStream()
+            ret.setKind(RPCStream.StreamKindConnectResponse)
+            ret.writeString(sessionString ?
+                sessionString :
+                "234-12345678123456781234567812345678"
+            )
+            ret.writeInt64(toRPCInt64(32))
+            ret.writeInt64(toRPCInt64(4 * 1024 * 1024))
+            ret.writeInt64(toRPCInt64(4000000000))
+            ret.writeInt64(toRPCInt64(8000000000))
+            return ret
+        }
+
+        this.onPing = (stream: RPCStream): RPCStream | null => {
+            if (!stream.isReadFinish()) {
+                return null
+            }
+            const ret = new RPCStream()
+            ret.setKind(RPCStream.StreamKindPong)
+            return ret
+        }
+    }
+
+    public emulate(stream: RPCStream): RPCStream | null {
+        switch (stream.getKind()) {
+        case RPCStream.ControlStreamConnectRequest:
+            return this.onConnectRequest(stream)
+        case RPCStream.StreamKindPing:
+            return this.onPing(stream)
+        case RPCStream.StreamKindRPCRequest:
+            return this.onRPCRequest(stream)
+        default:
+            return null
+        }
+    }
+}
+
+function fnTestCheckPreSendList(c: any, arr: any): boolean {
+    if (arr.length === 0) {
+        return c.preSendHead === null && c.preSendTail === null
+    }
+
+    if (c.preSendHead !== arr[0] || c.preSendTail !== arr[arr.length - 1]) {
+        console.log(c.preSendHead != arr[0])
+        console.log(c.preSendTail != arr[arr.length - 1])
+        return false
+    }
+
+    if (c.preSendTail.next !== null) {
+        return false
+    }
+
+    for (let i = 0; i < arr.length - 1; i++) {
+        if (arr[i].next != arr[i + 1]) {
+            return false
+        }
+    }
+
+    return true
+}
+
+function testTryToTimeout(totalItems: number, timeoutItems: number): boolean {
+    const v = new Client("sessionString") as any
+
+    if (totalItems < 0 || totalItems < timeoutItems) {
+        return false
+    }
+
+    const beforeData = []
+    const afterData = []
+
+    for (let i = 0; i < totalItems; i++) {
+        const item = new __test__.SendItem(1000)
+
+        if (v.preSendTail === null) {
+            v.preSendHead = item
+            v.preSendTail = item
+        } else {
+            v.preSendTail.next = item
+            v.preSendTail = item
+        }
+
+        beforeData.push(item)
+        afterData.push(item)
+    }
+
+    for (let i = 0; i < timeoutItems; i++) {
+        const idx = Math.floor(Math.random() * 999999999) % afterData.length
+        const item = afterData[idx] as any
+        item.deferred.promise.then(() => ({})).catch(() => ({}))
+        item["timeoutMS"] = 0
+        afterData.splice(idx, 1)
+    }
+
+    if (!fnTestCheckPreSendList(v, beforeData)) {
+        return false
+    }
+
+    v.tryToTimeout(getTimeNowMS() + 500)
+    return fnTestCheckPreSendList(v, afterData)
+}
+
+function testTryToDeliverPreSendMessages(
+    totalPreItems: number,
+    chSize: number,
+    chFree: number,
+): boolean {
+    if (chSize < chFree) {
+        return false
+    }
+
+    const v = new Client("sessionString") as any
+    v.lastPingTimeMS = 10000
+    v.config.heartbeatMS = 9
+    v.channels = []
+    v.conn = new FakeConn()
+
+    const chFreeArr = []
+    const itemsArray = []
+
+    for (let i = 0; i < chSize; i++) {
+        v.channels.push(new __test__.Channel(i))
+        chFreeArr.push(i)
+    }
+
+    for (let i = 0; i < totalPreItems; i++) {
+        const item = new __test__.SendItem(1000)
+        itemsArray.push(item)
+        if (v.preSendHead === null) {
+            v.preSendHead = itemsArray[i]
+            v.preSendTail = itemsArray[i]
+        } else {
+            v.preSendTail.next = itemsArray[i]
+            v.preSendTail = itemsArray[i]
+        }
+    }
+
+    if (!fnTestCheckPreSendList(v, itemsArray)) {
+        return false
+    }
+
+    while (chFreeArr.length > chFree) {
+        const idx = Math.floor(Math.random() * 999999999) % chFreeArr.length
+        v.channels[chFreeArr[idx]].item = new __test__.SendItem(1000)
+        chFreeArr.splice(idx, 1)
+    }
+
+    v.tryToDeliverPreSendMessages()
+
+    return fnTestCheckPreSendList(
+        v,
+        itemsArray.slice(Math.min(itemsArray.length, chFree)),
+    )
+}
 
 describe("parseResponseStream tests", () => {
     test("errCode format error", async () => {
@@ -107,11 +323,9 @@ describe("LogToScreenErrorStreamHub tests", () => {
         stream.writeUint64(toRPCUint64(ErrClientTimeout.getCode()))
         stream.writeString(ErrClientTimeout.getMessage())
         v.OnReceiveStream(stream)
-        /* eslint-disable @typescript-eslint/no-explicit-any */
         expect((console.log as any).mock.calls.length).toStrictEqual(1)
         expect((console.log as any).mock.calls[0][0])
             .toStrictEqual("[Client Error]: NetWarn[1025]: timeout")
-        /* eslint-enable @typescript-eslint/no-explicit-any */
     })
 
     test("LogToScreenErrorStreamHub_OnReceiveStream 02", async () => {
@@ -121,11 +335,9 @@ describe("LogToScreenErrorStreamHub tests", () => {
         stream.writeUint64(toRPCUint64(ErrClientTimeout.getCode()))
         stream.writeString(ErrClientTimeout.getMessage())
         v.OnReceiveStream(stream)
-        /* eslint-disable @typescript-eslint/no-explicit-any */
         expect((console.log as any).mock.calls.length).toStrictEqual(1)
         expect((console.log as any).mock.calls[0][0])
             .toStrictEqual("[Client Error]: NetWarn[1025]: timeout")
-        /* eslint-enable @typescript-eslint/no-explicit-any */
     })
 
     test("LogToScreenErrorStreamHub_OnReceiveStream 03", async () => {
@@ -134,9 +346,7 @@ describe("LogToScreenErrorStreamHub tests", () => {
         stream.setKind(RPCStream.StreamKindRPCResponseOK)
         stream.writeBool(true)
         v.OnReceiveStream(stream)
-        /* eslint-disable @typescript-eslint/no-explicit-any */
         expect((console.log as any).mock.calls.length).toStrictEqual(0)
-        /* eslint-enable @typescript-eslint/no-explicit-any */
     })
 })
 
@@ -154,31 +364,25 @@ describe("SendItem tests", () => {
 
     test("SendItem_back, stream is null or undefined", async () => {
         const v = new __test__.SendItem(1200)
-        /* eslint-disable @typescript-eslint/no-explicit-any */
         expect(v.back(null as any)).toStrictEqual(false)
         expect(!!v["deferred"]["reject"]).toStrictEqual(true)
         expect(!!v["deferred"]["resolve"]).toStrictEqual(true)
         expect(v.back(undefined as any)).toStrictEqual(false)
         expect(!!v["deferred"]["reject"]).toStrictEqual(true)
         expect(!!v["deferred"]["resolve"]).toStrictEqual(true)
-        /* eslint-enable @typescript-eslint/no-explicit-any */
     })
 
     test("SendItem_back, item is not running", async () => {
         const v = new __test__.SendItem(1200)
         v["isRunning"] = false
-        /* eslint-disable @typescript-eslint/no-explicit-any */
         expect(v.back(new RPCStream())).toStrictEqual(false)
         expect(!!v["deferred"]["reject"]).toStrictEqual(true)
         expect(!!v["deferred"]["resolve"]).toStrictEqual(true)
-        /* eslint-enable @typescript-eslint/no-explicit-any */
     })
 
     test("SendItem_back, test ok （reject)", async () => {
         const v = new __test__.SendItem(1200)
-        /* eslint-disable @typescript-eslint/no-explicit-any */
         expect(v.back(new RPCStream())).toStrictEqual(true)
-        /* eslint-enable @typescript-eslint/no-explicit-any */
         let errCount = 0
         try {
             await v.deferred.promise
@@ -195,9 +399,7 @@ describe("SendItem tests", () => {
         const stream = new RPCStream()
         stream.setKind(RPCStream.StreamKindRPCResponseOK)
         stream.writeString("OK")
-        /* eslint-disable @typescript-eslint/no-explicit-any */
         expect(v.back(stream)).toStrictEqual(true)
-        /* eslint-enable @typescript-eslint/no-explicit-any */
         let okCount = 0
         try {
             expect(await v.deferred.promise).toStrictEqual("OK")
@@ -342,3 +544,294 @@ describe("Subscription tests", () => {
         expect(client["subscriptionMap"]).toStrictEqual(new Map())
     })
 })
+
+describe("Client tests", () => {
+    test("new", async () => {
+        const v = new Client("sessionString")
+        expect(v["seed"]).toStrictEqual(0)
+        expect(v["config"]["numOfChannels"]).toStrictEqual(0)
+        expect(v["config"]["transLimit"]).toStrictEqual(0)
+        expect(v["config"]["heartbeatMS"]).toStrictEqual(0)
+        expect(v["config"]["heartbeatTimeoutMS"]).toStrictEqual(0)
+        expect(v["sessionString"]).toStrictEqual("")
+        expect(v["adapter"]["checkHandler"] as any > 0).toStrictEqual(true)
+        expect(v["conn"] === null).toStrictEqual(true)
+        expect(v["preSendHead"] === null).toStrictEqual(true)
+        expect(v["preSendTail"] === null).toStrictEqual(true)
+        expect(v["channels"] === null).toStrictEqual(true)
+        expect(v["lastPingTimeMS"]).toStrictEqual(0)
+        expect(v["subscriptionMap"]).toStrictEqual(new Map())
+        expect((v as any).errorHub.prefix === "Client").toStrictEqual(true)
+        expect(v["timer"] as any > 0).toStrictEqual(true)
+
+        // check tryLoop
+        let errCount = 0
+        try {
+            await v.send(100, "#.user:Sleep")
+        } catch (e) {
+            expect(e).toStrictEqual(ErrClientTimeout)
+            errCount++
+        } finally {
+            expect(errCount).toStrictEqual(1)
+        }
+    })
+
+    test("getSeed", async () => {
+        const v = new Client("sessionString")
+        expect(v["getSeed"]()).toStrictEqual(1)
+        expect(v["getSeed"]()).toStrictEqual(2)
+    })
+
+    test("setErrorHub", async () => {
+        const v = new Client("sessionString")
+        const hub = new LogToScreenErrorStreamHub("Hub")
+        v.setErrorHub(hub)
+        expect(v["errorHub"]).toStrictEqual(hub)
+    })
+
+    test("tryToSendPing, p.conn === nil", async () => {
+        const v = new Client("sessionString")
+        v["tryToSendPing"](1)
+        expect(v["lastPingTimeMS"]).toStrictEqual(0)
+    })
+
+    test("tryToSendPing, not need ping", async () => {
+        const v = new Client("sessionString")
+        v["config"]["heartbeatMS"] = 1000
+        v["conn"] = new WebSocketStreamConn(new WebSocket("ws://localhost"), v)
+        v["tryToSendPing"](1)
+        expect(v["lastPingTimeMS"]).toStrictEqual(0)
+    })
+
+    test("tryToSendPing, test ok", async () => {
+        const v = new Client("sessionString")
+        const fakeConn = new FakeConn()
+        let isRun = false
+        v["conn"] = fakeConn
+        fakeConn.onWriteStream = (stream: RPCStream) => {
+            expect(stream.getKind()).toStrictEqual(RPCStream.StreamKindPing)
+            expect(stream.isReadFinish()).toStrictEqual(true)
+            expect(stream.checkStream()).toStrictEqual(true)
+            isRun = true
+        }
+        v["tryToSendPing"](getTimeNowMS())
+        expect(isRun).toStrictEqual(true)
+    })
+
+    test("tryToTimeout, test ok", async () => {
+        for (let n = 0; n < 10; n++) {
+            for (let i = 0; i < 10; i++) {
+                for (let j = 0; j <= i; j++) {
+                    expect(testTryToTimeout(i, j)).toStrictEqual(true)
+                }
+            }
+        }
+    })
+
+    test("tryToTimeout, channels has been swept", async () => {
+        const v = new Client("ws://localhost") as any
+        v.lastPingTimeMS = 10000
+        v.config.heartbeatTimeoutMS = 9
+        v.channels = [new __test__.Channel(0)]
+        const item = new __test__.SendItem(5)
+        item.deferred.promise.then(() => ({})).catch(() => ({}))
+        v.channels[0].use(item, 1)
+        v.tryToTimeout(item.sendTimeMS + 4)
+        expect(v.channels[0].sequence).toStrictEqual(1)
+        expect(v.channels[0].item === null).toStrictEqual(false)
+        v.tryToTimeout(item.sendTimeMS + 10)
+        expect(v.channels[0].sequence).toStrictEqual(1)
+        expect(v.channels[0].item === null).toStrictEqual(true)
+    })
+
+    test("tryToTimeout, conn has been swept", async () => {
+        const v = new Client("ws://localhost") as any
+        v.lastPingTimeMS = 10000
+        v.config.heartbeatTimeoutMS = 9
+        v.channels = [new __test__.Channel(0)]
+
+        // conn is nil
+        v.tryToTimeout(getTimeNowMS())
+        expect(v.conn).toStrictEqual(null)
+
+        // set conn
+        let doOnClose = false
+        const fakeConn = new FakeConn()
+        const fakeConnActiveMS = getTimeNowMS()
+        fakeConn.onIsActive =
+            (nowMS, timeoutMS) => nowMS - fakeConnActiveMS < timeoutMS
+        fakeConn.onClose = () => {
+            doOnClose = true
+        }
+        v.conn = fakeConn
+
+        // conn is active
+        v.tryToTimeout(getTimeNowMS() + 4)
+        expect(doOnClose).toStrictEqual(false)
+
+        // conn is not active
+        v.tryToTimeout(getTimeNowMS() + 20)
+        expect(doOnClose).toStrictEqual(true)
+    })
+
+    test("tryToDeliverPreSendMessages, test ok", async () => {
+        for (let n = 16; n <= 32; n++) {
+            for (let i = 0; i < 10; i++) {
+                for (let j = 0; j <= n; j++) {
+                    expect(testTryToDeliverPreSendMessages(i, n, j))
+                        .toStrictEqual(true)
+                }
+            }
+        }
+    })
+
+    test("tryToDeliverPreSendMessages, this.conn === null", async () => {
+        const v = new Client("sessionString") as any
+        const item = new __test__.SendItem(1000)
+        v.lastPingTimeMS = 10000
+        v.config.heartbeatMS = 9
+        v.channels = [new __test__.Channel(0)]
+        v.preSendHead = item
+        v.tryToDeliverPreSendMessages()
+        expect(v.preSendHead).toStrictEqual(item)
+    })
+
+    test("tryToDeliverPreSendMessages, this.channel === null", async () => {
+        const v = new Client("sessionString") as any
+        const item = new __test__.SendItem(1000)
+        v.lastPingTimeMS = 10000
+        v.config.heartbeatMS = 9
+        v.conn = new FakeConn()
+        v.preSendHead = item
+        v.tryToDeliverPreSendMessages()
+        expect(v.preSendHead).toStrictEqual(item)
+    })
+
+    test("subscribe, basic", async () => {
+        const v = new Client("sessionString") as any
+
+        const sub1 = v.subscribe("#.test", "Message01", () => ({}))
+        const sub2 = v.subscribe("#.test", "Message01", () => ({}))
+        const sub3 = v.subscribe("#.test", "Message02", () => ({}))
+        expect(!!sub1).toStrictEqual(true)
+        expect(!!sub2).toStrictEqual(true)
+        expect(!!sub3).toStrictEqual(true)
+
+        const map = new Map()
+        map.set("#.test%Message01", [sub1, sub2])
+        map.set("#.test%Message02", [sub3])
+        expect(v.subscriptionMap).toStrictEqual(map)
+    })
+
+    test("subscribe, message", async () => {
+        const v = new Client("sessionString")
+        let runOK = false
+        v.subscribe("#.test", "Message01", (v: RPCAny) => {
+            expect(v).toStrictEqual("OK")
+            runOK = true
+        })
+
+        const stream = new RPCStream()
+        stream.setKind(RPCStream.StreamKindRPCBoardCast)
+        stream.writeString("#.test%Message01")
+        stream.writeString("OK")
+        v["conn"] = new FakeConn()
+        v.OnConnReadStream(v["conn"], stream)
+
+        expect(runOK).toStrictEqual(true)
+    })
+
+    test("unsubscribe", async () => {
+        const v = new Client("sessionString") as any
+        const sub1 = v.subscribe("#.test", "Message01", () => ({}))
+        const sub2 = v.subscribe("#.test", "Message01", () => ({}))
+        const sub3 = v.subscribe("#.test", "Message02", () => ({}))
+
+        const map1 = new Map()
+        map1.set("#.test%Message01", [sub1, sub2])
+        map1.set("#.test%Message02", [sub3])
+        expect(v.subscriptionMap).toStrictEqual(map1)
+
+        v.unsubscribe(sub1.id)
+        const map2 = new Map()
+        map2.set("#.test%Message01", [sub2])
+        map2.set("#.test%Message02", [sub3])
+        expect(v.subscriptionMap).toStrictEqual(map2)
+
+        v.unsubscribe(sub2.id)
+        const map3 = new Map()
+        map3.set("#.test%Message02", [sub3])
+        expect(v.subscriptionMap).toStrictEqual(map3)
+
+        v.unsubscribe(sub3.id)
+        expect(v.subscriptionMap).toStrictEqual(new Map())
+    })
+
+    test("send, args error", async () => {
+        const v = new Client("sessionString") as any
+        v.conn = new FakeConn()
+        let runOK = false
+        try {
+            await v.send(1000, "#.user:SayHello", 0)
+        } catch (e) {
+            expect(e).toStrictEqual(ErrUnsupportedValue.addDebug(
+                "1st argument(0): value is not supported",
+            ))
+            runOK = true
+        } finally {
+            expect(runOK).toStrictEqual(true)
+        }
+    })
+
+    test("send, test ok", async () => {
+        const server = new TestServer((stream: RPCStream): RPCStream | null => {
+            const [target, ok1] = stream.readString()
+            const [from, ok2] = stream.readString()
+            const [arg, ok3] = stream.readString()
+            if (target === "#.user:SayHello" && from === "@" && arg === "kitty"
+                && ok1 && ok2 && ok3) {
+                const retStream = new RPCStream()
+                retStream.setCallbackID(stream.getCallbackID())
+                retStream.setKind(RPCStream.StreamKindRPCResponseOK)
+                retStream.writeString("hello kitty")
+                return retStream
+            } else {
+                return null
+            }
+        })
+
+        const v = new Client("ws://localhost") as any
+        const conn = new FakeConn()
+        conn.onIsActive = () => true
+        conn.onIsClosed = () => false
+        conn.onWriteStream = (stream: RPCStream) => {
+            const retStream = server.emulate(stream)
+            if (retStream) {
+                retStream.buildStreamCheck()
+                v.OnConnReadStream(conn, retStream)
+            }
+        }
+        v.OnConnOpen(conn)
+        let sendCount = 0
+        for (let i = 0; i < 100; i++) {
+            try {
+                const ret = await v.send(6000, "#.user:SayHello", "kitty")
+                expect(ret).toStrictEqual("hello kitty")
+                sendCount++
+            } catch (e) {
+                console.log(e)
+            }
+        }
+        expect(sendCount).toStrictEqual(100)
+    })
+
+    test("close, test ok", async () => {
+        const v = new Client("ws://localhost") as any
+        expect(v.timer !== null).toStrictEqual(true)
+        expect(v.close()).toStrictEqual(true)
+        expect(v.timer === null).toStrictEqual(true)
+        expect(v.close()).toStrictEqual(false)
+    })
+})
+
+/* eslint-enable @typescript-eslint/no-explicit-any */

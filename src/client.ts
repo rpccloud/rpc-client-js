@@ -9,7 +9,7 @@ import {
     ErrUnsupportedValue,
     RPCError
 } from "./error"
-import {getTimeNowMS} from "./utils"
+import {convertOrdinalToString, getTimeNowMS} from "./utils"
 
 export function parseResponseStream(
     stream: RPCStream,
@@ -369,8 +369,10 @@ export class Client implements IReceiver {
         // write args
         for (let i = 0; i < args.length; i++) {
             const eStr = item.sendStream.write(args[i])
-            if (eStr != RPCStream.StreamWriteOK) {
-                item.deferred.doReject(ErrUnsupportedValue.addDebug(eStr))
+            if (eStr !== RPCStream.StreamWriteOK) {
+                item.deferred.doReject(ErrUnsupportedValue.addDebug(
+                    `${convertOrdinalToString(i + 1)} argument(${args[i]}): ${eStr}`
+                ))
                 return item.deferred.promise
             }
         }
@@ -407,7 +409,6 @@ export class Client implements IReceiver {
     }
 
     OnConnReadStream(streamConn: IStreamConn, stream: RPCStream): void {
-
         const callbackID = stream.getCallbackID()
 
         if (this.conn == null) {
