@@ -39,7 +39,11 @@ export class RPCError {
         return this.message
     }
 
-    public addDebug(debug: string): RPCError {
+    public addDebug(debug: string | undefined): RPCError {
+        if (!debug) {
+            return this
+        }
+
         if (!this.message) {
             return new RPCError(this.code, debug)
         } else {
@@ -108,7 +112,7 @@ export const ErrClientTimeout = defineError(
     ErrorType.Net,
     clientErrorSeg | 1,
     ErrorLevel.Warn,
-    "timeout",
+    "",
 )
 
 export const ErrClientConfig = defineError(

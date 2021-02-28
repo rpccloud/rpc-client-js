@@ -47,19 +47,13 @@ export interface IStreamHub {
 }
 
 export class LogToScreenErrorStreamHub implements IStreamHub {
-    private readonly prefix: string
-
-    public constructor(prefix: string) {
-        this.prefix = prefix
-    }
-
     public OnReceiveStream(stream: RPCStream): void {
         const kind = stream.getKind()
         if (kind === RPCStream.StreamKindSystemErrorReport ||
             kind === RPCStream.StreamKindRPCResponseError) {
             const err = parseResponseStream(stream)[1]
             if (err !== null) {
-                console.log(`[${this.prefix} Error]: ${err.toString()}`)
+                console.log(err.toString())
             }
         }
     }
@@ -81,6 +75,7 @@ class SendItem {
     private readonly timeoutMS: number
     readonly deferred: Deferred
     readonly sendStream: RPCStream
+    stack: string | undefined
     next: SendItem | null = null
 
     constructor(timeoutMS: number) {
@@ -111,14 +106,6 @@ class SendItem {
 
     checkTime(nowMS: number): boolean {
         if (nowMS - this.startTimeMS > this.timeoutMS && this.isRunning) {
-            // return timeout stream
-            const stream = new RPCStream()
-            stream.setKind(RPCStream.StreamKindRPCResponseError)
-            stream.setCallbackID(this.sendStream.getCallbackID())
-            stream.writeUint64(toRPCUint64(ErrClientTimeout.getCode()))
-            stream.writeString(ErrClientTimeout.getMessage())
-            this.back(stream)
-
             this.isRunning = false
             return true
         }
@@ -164,9 +151,8 @@ class Channel {
 
     // CheckTime ...
     checkTime(nowMS: number): boolean {
-        if (this.item !== null && this.item.checkTime(nowMS)) {
-            this.item = null
-            return true
+        if (this.item !== null) {
+            return this.item.checkTime(nowMS)
         }
 
         return false
@@ -198,6 +184,18 @@ class Subscription {
 }
 
 export class Client implements IReceiver {
+    private static makeErrorResponseStream(
+        err: RPCError,
+        callbackID: number,
+    ): RPCStream {
+        const stream = new RPCStream()
+        stream.setKind(RPCStream.StreamKindRPCResponseError)
+        stream.setCallbackID(callbackID)
+        stream.writeUint64(toRPCUint64(err.getCode()))
+        stream.writeString(err.getMessage())
+        return stream
+    }
+
     private seed: number
     private config: Config
     private sessionString: string
@@ -210,6 +208,7 @@ export class Client implements IReceiver {
     private readonly subscriptionMap: Map<string, Array<Subscription>>
     private errorHub: IStreamHub
     private timer: number | null
+    public debugMode = false
 
     constructor(connectString: string) {
         this.seed = 0
@@ -222,7 +221,7 @@ export class Client implements IReceiver {
         this.channels = null
         this.lastPingTimeMS = 0
         this.subscriptionMap = new Map<string, Array<Subscription>>()
-        this.errorHub = new LogToScreenErrorStreamHub("Client")
+        this.errorHub = new LogToScreenErrorStreamHub()
 
         this.adapter.open()
         this.timer = window.setInterval(() => {
@@ -256,6 +255,7 @@ export class Client implements IReceiver {
     }
 
     private tryToTimeout(nowMS: number): void {
+        const timeoutItems = []
         // sweep pre send list
         let preValidItem: SendItem | null = null
         let item = this.preSendHead
@@ -274,6 +274,7 @@ export class Client implements IReceiver {
                 }
 
                 item.next = null
+                timeoutItems.push(item)
                 item = nextItem
             } else {
                 preValidItem = item
@@ -284,8 +285,25 @@ export class Client implements IReceiver {
         // sweep the channels
         if (this.channels !== null) {
             for (let i = 0; i < this.channels.length; i++) {
-                this.channels[i].checkTime(nowMS)
+                const channel = this.channels[i]
+                if (channel.item !== null && channel.checkTime(nowMS)) {
+                    timeoutItems.push(channel.item)
+                    channel.item = null
+                }
             }
+        }
+
+        for (let i = 0; i < timeoutItems.length; i++) {
+            const sendStream = timeoutItems[i].sendStream
+            const [target] = sendStream.readString()
+            const err = ErrClientTimeout
+                .addDebug(`${target} timeout`)
+                .addDebug(timeoutItems[i].stack)
+
+            this.errorHub.OnReceiveStream(
+                Client.makeErrorResponseStream(err, sendStream.getCallbackID()),
+            )
+            timeoutItems[i].deferred.doReject(err)
         }
 
         // check conn timeout
@@ -355,11 +373,16 @@ export class Client implements IReceiver {
         }
     }
 
-    public async send(
+    public send(
         timeoutMS: number,
         target: string,
         ...args: Array<RPCAny>): Promise<RPCAny> {
         const item = new SendItem(timeoutMS)
+
+        if (this.debugMode) {
+            item.stack = new Error("Stack:").stack
+        }
+
         item.sendStream.setKind(RPCStream.StreamKindRPCRequest)
 
         // write target
@@ -408,10 +431,10 @@ export class Client implements IReceiver {
         streamConn.writeStream(stream)
     }
 
-    OnConnReadStream(streamConn: IStreamConn, stream: RPCStream): void {
+    OnConnReadStream(streamConn: IStreamConn | null, stream: RPCStream): void {
         const callbackID = stream.getCallbackID()
 
-        if (this.conn == null) {
+        if (this.conn === null && streamConn !== null) {
             this.conn = streamConn
 
             if (callbackID != 0) {
@@ -458,10 +481,26 @@ export class Client implements IReceiver {
         } else {
             switch (stream.getKind()) {
             case RPCStream.StreamKindRPCResponseOK:
+                if (this.channels !== null && this.channels.length > 0) {
+                    const channel = this.channels[callbackID % this.channels.length]
+                    if (channel.item && channel.sequence == callbackID) {
+                        channel.free(stream)
+                        this.tryToDeliverPreSendMessages()
+                    }
+                }
+                break
             case RPCStream.StreamKindRPCResponseError:
                 if (this.channels !== null && this.channels.length > 0) {
                     const channel = this.channels[callbackID % this.channels.length]
-                    if (channel.sequence == callbackID) {
+                    if (channel.item && channel.sequence == callbackID) {
+                        let [, err] = parseResponseStream(stream)
+                        if (err === null) {
+                            err = ErrStream
+                        }
+                        err = err.addDebug(channel.item.stack)
+                        this.errorHub.OnReceiveStream(
+                            Client.makeErrorResponseStream(err, callbackID)
+                        )
                         channel.free(stream)
                         this.tryToDeliverPreSendMessages()
                     }
@@ -494,7 +533,7 @@ export class Client implements IReceiver {
         }
     }
 
-    OnConnError(streamConn: IStreamConn, err: RPCError): void {
+    OnConnError(streamConn: IStreamConn | null, err: RPCError): void {
         if (err) {
             const stream = new RPCStream()
             stream.setKind(RPCStream.StreamKindSystemErrorReport)

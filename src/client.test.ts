@@ -1,6 +1,7 @@
 import {RPCStream} from "./stream"
 import {RPCAny, toRPCInt64, toRPCUint64} from "./types"
 import {
+    ErrClientConfig,
     ErrClientTimeout,
     ErrStream,
     ErrUnsupportedValue, RPCError,
@@ -312,37 +313,34 @@ describe("LogToScreenErrorStreamHub tests", () => {
         jest.clearAllMocks()
     })
 
-    test("LogToScreenErrorStreamHub_new", async () => {
-        const v = new LogToScreenErrorStreamHub("Client")
-        expect(v["prefix"]).toStrictEqual("Client")
-    })
-
     test("LogToScreenErrorStreamHub_OnReceiveStream 01", async () => {
-        const v = new LogToScreenErrorStreamHub("Client")
+        const v = new LogToScreenErrorStreamHub()
         const stream = new RPCStream()
         stream.setKind(RPCStream.StreamKindRPCResponseError)
-        stream.writeUint64(toRPCUint64(ErrClientTimeout.getCode()))
-        stream.writeString(ErrClientTimeout.getMessage())
+        stream.writeUint64(toRPCUint64(ErrClientConfig.getCode()))
+        stream.writeString(ErrClientConfig.getMessage())
         v.OnReceiveStream(stream)
         expect((console.log as any).mock.calls.length).toStrictEqual(1)
-        expect((console.log as any).mock.calls[0][0])
-            .toStrictEqual("[Client Error]: NetWarn[1025]: timeout")
+        expect((console.log as any).mock.calls[0][0]).toStrictEqual(
+            "ConfigWarn[1026]: client config error",
+        )
     })
 
     test("LogToScreenErrorStreamHub_OnReceiveStream 02", async () => {
-        const v = new LogToScreenErrorStreamHub("Client")
+        const v = new LogToScreenErrorStreamHub()
         const stream = new RPCStream()
         stream.setKind(RPCStream.StreamKindSystemErrorReport)
-        stream.writeUint64(toRPCUint64(ErrClientTimeout.getCode()))
-        stream.writeString(ErrClientTimeout.getMessage())
+        stream.writeUint64(toRPCUint64(ErrClientConfig.getCode()))
+        stream.writeString(ErrClientConfig.getMessage())
         v.OnReceiveStream(stream)
         expect((console.log as any).mock.calls.length).toStrictEqual(1)
-        expect((console.log as any).mock.calls[0][0])
-            .toStrictEqual("[Client Error]: NetWarn[1025]: timeout")
+        expect((console.log as any).mock.calls[0][0]).toStrictEqual(
+            "ConfigWarn[1026]: client config error",
+        )
     })
 
     test("LogToScreenErrorStreamHub_OnReceiveStream 03", async () => {
-        const v = new LogToScreenErrorStreamHub("Client")
+        const v = new LogToScreenErrorStreamHub()
         const stream = new RPCStream()
         stream.setKind(RPCStream.StreamKindRPCResponseOK)
         stream.writeBool(true)
@@ -417,16 +415,6 @@ describe("SendItem tests", () => {
         v.sendStream.setCallbackID(15)
         await sleep(100)
         expect(v.checkTime(getTimeNowMS())).toStrictEqual(true)
-        expect(v["isRunning"]).toStrictEqual(false)
-        let errCount = 0
-        try {
-            await v.deferred.promise
-        } catch (e) {
-            expect(e).toStrictEqual(ErrClientTimeout)
-            errCount++
-        } finally {
-            expect(errCount).toStrictEqual(1)
-        }
     })
 
     test("SendItem_checkTime, it is not timeout", async () => {
@@ -509,19 +497,9 @@ describe("Channel tests", () => {
 
     test("Channel_checkTime, return true", async () => {
         const v = new __test__.Channel(1000)
-        const item = new __test__.SendItem(1)
-        v.item = item
+        v.item = new __test__.SendItem(1)
         await sleep(10)
         expect(v.checkTime(getTimeNowMS())).toStrictEqual(true)
-        let errCount = 0
-        try {
-            await item.deferred.promise
-        } catch (e) {
-            expect(e).toStrictEqual(ErrClientTimeout)
-            errCount++
-        } finally {
-            expect(errCount).toStrictEqual(1)
-        }
     })
 })
 
@@ -564,7 +542,7 @@ describe("Client tests", () => {
         expect(v["channels"] === null).toStrictEqual(true)
         expect(v["lastPingTimeMS"]).toStrictEqual(0)
         expect(v["subscriptionMap"]).toStrictEqual(new Map())
-        expect((v as any).errorHub.prefix === "Client").toStrictEqual(true)
+        expect(!!v["errorHub"]).toStrictEqual(true)
         expect(v["timer"] as any > 0).toStrictEqual(true)
 
         // check tryLoop
@@ -572,7 +550,9 @@ describe("Client tests", () => {
         try {
             await v.send(100, "#.user:Sleep")
         } catch (e) {
-            expect(e).toStrictEqual(ErrClientTimeout)
+            expect(e).toStrictEqual(
+                ErrClientTimeout.addDebug("#.user:Sleep timeout"),
+            )
             errCount++
         } finally {
             expect(errCount).toStrictEqual(1)
@@ -590,7 +570,7 @@ describe("Client tests", () => {
 
     test("setErrorHub", async () => {
         const v = new Client("error005")
-        const hub = new LogToScreenErrorStreamHub("Hub")
+        const hub = new LogToScreenErrorStreamHub()
         v.setErrorHub(hub)
         expect(v["errorHub"]).toStrictEqual(hub)
         v.close()
