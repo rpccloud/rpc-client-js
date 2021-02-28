@@ -3,7 +3,7 @@ import {RPCAny, toRPCInt64, toRPCUint64} from "./types"
 import {
     ErrClientTimeout,
     ErrStream,
-    ErrUnsupportedValue,
+    ErrUnsupportedValue, RPCError,
 } from "./error"
 import {
     __test__, Client,
@@ -131,7 +131,7 @@ function fnTestCheckPreSendList(c: any, arr: any): boolean {
 }
 
 function testTryToTimeout(totalItems: number, timeoutItems: number): boolean {
-    const v = new Client("sessionString") as any
+    const v = new Client("error001") as any
 
     if (totalItems < 0 || totalItems < timeoutItems) {
         return false
@@ -168,6 +168,7 @@ function testTryToTimeout(totalItems: number, timeoutItems: number): boolean {
     }
 
     v.tryToTimeout(getTimeNowMS() + 500)
+    v.close()
     return fnTestCheckPreSendList(v, afterData)
 }
 
@@ -180,7 +181,7 @@ function testTryToDeliverPreSendMessages(
         return false
     }
 
-    const v = new Client("sessionString") as any
+    const v = new Client("error002") as any
     v.lastPingTimeMS = 10000
     v.config.heartbeatMS = 9
     v.channels = []
@@ -217,7 +218,7 @@ function testTryToDeliverPreSendMessages(
     }
 
     v.tryToDeliverPreSendMessages()
-
+    v.close()
     return fnTestCheckPreSendList(
         v,
         itemsArray.slice(Math.min(itemsArray.length, chFree)),
@@ -532,6 +533,7 @@ describe("Subscription tests", () => {
         expect(v["client"]).toStrictEqual(client)
         expect(v["id"]).toStrictEqual(12)
         expect(v["onMessage"]).toStrictEqual(onMessage)
+        client.close()
     })
 
     test("Subscription_close", async () => {
@@ -542,12 +544,13 @@ describe("Subscription tests", () => {
         expect(v["id"]).toStrictEqual(0)
         expect(v["client"]).toStrictEqual(null)
         expect(client["subscriptionMap"]).toStrictEqual(new Map())
+        client.close()
     })
 })
 
 describe("Client tests", () => {
     test("new", async () => {
-        const v = new Client("sessionString")
+        const v = new Client("error003")
         expect(v["seed"]).toStrictEqual(0)
         expect(v["config"]["numOfChannels"]).toStrictEqual(0)
         expect(v["config"]["transLimit"]).toStrictEqual(0)
@@ -574,37 +577,43 @@ describe("Client tests", () => {
         } finally {
             expect(errCount).toStrictEqual(1)
         }
+
+        v.close()
     })
 
     test("getSeed", async () => {
-        const v = new Client("sessionString")
+        const v = new Client("error004")
         expect(v["getSeed"]()).toStrictEqual(1)
         expect(v["getSeed"]()).toStrictEqual(2)
+        v.close()
     })
 
     test("setErrorHub", async () => {
-        const v = new Client("sessionString")
+        const v = new Client("error005")
         const hub = new LogToScreenErrorStreamHub("Hub")
         v.setErrorHub(hub)
         expect(v["errorHub"]).toStrictEqual(hub)
+        v.close()
     })
 
     test("tryToSendPing, p.conn === nil", async () => {
-        const v = new Client("sessionString")
+        const v = new Client("error006")
         v["tryToSendPing"](1)
         expect(v["lastPingTimeMS"]).toStrictEqual(0)
+        v.close()
     })
 
     test("tryToSendPing, not need ping", async () => {
-        const v = new Client("sessionString")
+        const v = new Client("error007")
         v["config"]["heartbeatMS"] = 1000
         v["conn"] = new WebSocketStreamConn(new WebSocket("ws://localhost"), v)
         v["tryToSendPing"](1)
         expect(v["lastPingTimeMS"]).toStrictEqual(0)
+        v.close()
     })
 
     test("tryToSendPing, test ok", async () => {
-        const v = new Client("sessionString")
+        const v = new Client("error008")
         const fakeConn = new FakeConn()
         let isRun = false
         v["conn"] = fakeConn
@@ -616,6 +625,7 @@ describe("Client tests", () => {
         }
         v["tryToSendPing"](getTimeNowMS())
         expect(isRun).toStrictEqual(true)
+        v.close()
     })
 
     test("tryToTimeout, test ok", async () => {
@@ -642,6 +652,7 @@ describe("Client tests", () => {
         v.tryToTimeout(item.sendTimeMS + 10)
         expect(v.channels[0].sequence).toStrictEqual(1)
         expect(v.channels[0].item === null).toStrictEqual(true)
+        v.close()
     })
 
     test("tryToTimeout, conn has been swept", async () => {
@@ -672,6 +683,8 @@ describe("Client tests", () => {
         // conn is not active
         v.tryToTimeout(getTimeNowMS() + 20)
         expect(doOnClose).toStrictEqual(true)
+
+        v.close()
     })
 
     test("tryToDeliverPreSendMessages, test ok", async () => {
@@ -686,7 +699,7 @@ describe("Client tests", () => {
     })
 
     test("tryToDeliverPreSendMessages, this.conn === null", async () => {
-        const v = new Client("sessionString") as any
+        const v = new Client("error009") as any
         const item = new __test__.SendItem(1000)
         v.lastPingTimeMS = 10000
         v.config.heartbeatMS = 9
@@ -694,10 +707,11 @@ describe("Client tests", () => {
         v.preSendHead = item
         v.tryToDeliverPreSendMessages()
         expect(v.preSendHead).toStrictEqual(item)
+        v.close()
     })
 
     test("tryToDeliverPreSendMessages, this.channel === null", async () => {
-        const v = new Client("sessionString") as any
+        const v = new Client("error010") as any
         const item = new __test__.SendItem(1000)
         v.lastPingTimeMS = 10000
         v.config.heartbeatMS = 9
@@ -705,10 +719,11 @@ describe("Client tests", () => {
         v.preSendHead = item
         v.tryToDeliverPreSendMessages()
         expect(v.preSendHead).toStrictEqual(item)
+        v.close()
     })
 
     test("subscribe, basic", async () => {
-        const v = new Client("sessionString") as any
+        const v = new Client("error011") as any
 
         const sub1 = v.subscribe("#.test", "Message01", () => ({}))
         const sub2 = v.subscribe("#.test", "Message01", () => ({}))
@@ -721,10 +736,11 @@ describe("Client tests", () => {
         map.set("#.test%Message01", [sub1, sub2])
         map.set("#.test%Message02", [sub3])
         expect(v.subscriptionMap).toStrictEqual(map)
+        v.close()
     })
 
     test("subscribe, message", async () => {
-        const v = new Client("sessionString")
+        const v = new Client("error012")
         let runOK = false
         v.subscribe("#.test", "Message01", (v: RPCAny) => {
             expect(v).toStrictEqual("OK")
@@ -739,10 +755,11 @@ describe("Client tests", () => {
         v.OnConnReadStream(v["conn"], stream)
 
         expect(runOK).toStrictEqual(true)
+        v.close()
     })
 
     test("unsubscribe", async () => {
-        const v = new Client("sessionString") as any
+        const v = new Client("error013") as any
         const sub1 = v.subscribe("#.test", "Message01", () => ({}))
         const sub2 = v.subscribe("#.test", "Message01", () => ({}))
         const sub3 = v.subscribe("#.test", "Message02", () => ({}))
@@ -765,10 +782,11 @@ describe("Client tests", () => {
 
         v.unsubscribe(sub3.id)
         expect(v.subscriptionMap).toStrictEqual(new Map())
+        v.close()
     })
 
     test("send, args error", async () => {
-        const v = new Client("sessionString") as any
+        const v = new Client("error014") as any
         v.conn = new FakeConn()
         let runOK = false
         try {
@@ -781,6 +799,7 @@ describe("Client tests", () => {
         } finally {
             expect(runOK).toStrictEqual(true)
         }
+        v.close()
     })
 
     test("send, test ok", async () => {
@@ -800,7 +819,7 @@ describe("Client tests", () => {
             }
         })
 
-        const v = new Client("ws://localhost") as any
+        const v = new Client("wdl://localhost") as any
         const conn = new FakeConn()
         conn.onIsActive = () => true
         conn.onIsClosed = () => false
@@ -808,21 +827,26 @@ describe("Client tests", () => {
             const retStream = server.emulate(stream)
             if (retStream) {
                 retStream.buildStreamCheck()
-                v.OnConnReadStream(conn, retStream)
+                setTimeout((s) => {
+                    v.OnConnReadStream(conn, s)
+                }, 30, retStream)
             }
         }
+        await sleep(500)
         v.OnConnOpen(conn)
         let sendCount = 0
         for (let i = 0; i < 100; i++) {
-            try {
-                const ret = await v.send(6000, "#.user:SayHello", "kitty")
+            v.send(6000, "#.user:SayHello", "kitty").then((ret: RPCAny) => {
                 expect(ret).toStrictEqual("hello kitty")
                 sendCount++
-            } catch (e) {
+            }).catch((e: RPCError) => {
                 console.log(e)
-            }
+            })
         }
+
+        await sleep(1500)
         expect(sendCount).toStrictEqual(100)
+        v.close()
     })
 
     test("close, test ok", async () => {
