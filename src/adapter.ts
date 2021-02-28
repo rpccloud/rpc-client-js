@@ -82,6 +82,7 @@ export class WebSocketStreamConn implements IStreamConn {
 
     public writeStream(stream: RPCStream): boolean {
         try {
+            stream.buildStreamCheck()
             this.ws.send(stream.getBuffer())
             return true
         } catch (e) {
