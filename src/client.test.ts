@@ -878,6 +878,199 @@ describe("Client tests", () => {
         expect(runOK).toStrictEqual(true)
     })
 
+    test("OnConnReadStream, conn == nil, callbackID != 0", () => {
+        let runOK = false
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        v.setErrorHub({
+            OnReceiveStream(s: RPCStream) {
+                expect(parseResponseStream(s)).toStrictEqual([null, ErrStream])
+                runOK = true
+            },
+        })
+        const stream = new RPCStream()
+        stream.setCallbackID(12)
+        v.OnConnReadStream(conn, stream)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
+
+    test("OnConnReadStream, conn == nil, kind error", () => {
+        let runOK = false
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        v.setErrorHub({
+            OnReceiveStream(s: RPCStream) {
+                expect(parseResponseStream(s)).toStrictEqual([null, ErrStream])
+                runOK = true
+            },
+        })
+        const stream = new RPCStream()
+        stream.setCallbackID(0)
+        v.OnConnReadStream(conn, stream)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
+
+    test("OnConnReadStream, conn == nil, read sessionString error", () => {
+        let runOK = false
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        v.setErrorHub({
+            OnReceiveStream(s: RPCStream) {
+                expect(parseResponseStream(s)).toStrictEqual([null, ErrStream])
+                runOK = true
+            },
+        })
+        const stream = new RPCStream()
+        stream.setCallbackID(0)
+        stream.setKind(RPCStream.StreamKindConnectResponse)
+        v.OnConnReadStream(conn, stream)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
+
+    test("OnConnReadStream, conn == nil, read numOfChannels error", () => {
+        let runOK = false
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        v.setErrorHub({
+            OnReceiveStream(s: RPCStream) {
+                expect(parseResponseStream(s)).toStrictEqual([null, ErrStream])
+                runOK = true
+            },
+        })
+        const stream = new RPCStream()
+        stream.setCallbackID(0)
+        stream.setKind(RPCStream.StreamKindConnectResponse)
+        stream.writeString("12-87654321876543218765432187654321")
+        v.OnConnReadStream(conn, stream)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
+
+    test("OnConnReadStream, conn == nil, numOfChannels config error", () => {
+        let runOK = false
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        v.setErrorHub({
+            OnReceiveStream(s: RPCStream) {
+                expect(parseResponseStream(s)).toStrictEqual([null, ErrStream])
+                runOK = true
+            },
+        })
+        const stream = new RPCStream()
+        stream.setCallbackID(0)
+        stream.setKind(RPCStream.StreamKindConnectResponse)
+        stream.writeString("12-87654321876543218765432187654321")
+        stream.writeInt64(toRPCInt64(0))
+        v.OnConnReadStream(conn, stream)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
+
+    test("OnConnReadStream, read transLimit error", () => {
+        let runOK = false
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        v.setErrorHub({
+            OnReceiveStream(s: RPCStream) {
+                expect(parseResponseStream(s)).toStrictEqual([null, ErrStream])
+                runOK = true
+            },
+        })
+        const stream = new RPCStream()
+        stream.setCallbackID(0)
+        stream.setKind(RPCStream.StreamKindConnectResponse)
+        stream.writeString("12-87654321876543218765432187654321")
+        stream.writeInt64(toRPCInt64(32))
+        v.OnConnReadStream(conn, stream)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
+
+    test("OnConnReadStream, transLimit config error", () => {
+        let runOK = false
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        v.setErrorHub({
+            OnReceiveStream(s: RPCStream) {
+                expect(parseResponseStream(s)).toStrictEqual([null, ErrStream])
+                runOK = true
+            },
+        })
+        const stream = new RPCStream()
+        stream.setCallbackID(0)
+        stream.setKind(RPCStream.StreamKindConnectResponse)
+        stream.writeString("12-87654321876543218765432187654321")
+        stream.writeInt64(toRPCInt64(32))
+        stream.writeInt64(toRPCInt64(0))
+        v.OnConnReadStream(conn, stream)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
+
+    test("OnConnReadStream, read heartbeat error", () => {
+        let runOK = false
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        v.setErrorHub({
+            OnReceiveStream(s: RPCStream) {
+                expect(parseResponseStream(s)).toStrictEqual([null, ErrStream])
+                runOK = true
+            },
+        })
+        const stream = new RPCStream()
+        stream.setCallbackID(0)
+        stream.setKind(RPCStream.StreamKindConnectResponse)
+        stream.writeString("12-87654321876543218765432187654321")
+        stream.writeInt64(toRPCInt64(32))
+        stream.writeInt64(toRPCInt64(4 * 1024 * 1024))
+        v.OnConnReadStream(conn, stream)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
+
+    test("OnConnReadStream, heartbeat config error", () => {
+        let runOK = false
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        v.setErrorHub({
+            OnReceiveStream(s: RPCStream) {
+                expect(parseResponseStream(s)).toStrictEqual([null, ErrStream])
+                runOK = true
+            },
+        })
+        const stream = new RPCStream()
+        stream.setCallbackID(0)
+        stream.setKind(RPCStream.StreamKindConnectResponse)
+        stream.writeString("12-87654321876543218765432187654321")
+        stream.writeInt64(toRPCInt64(32))
+        stream.writeInt64(toRPCInt64(4 * 1024 * 1024))
+        stream.writeInt64(toRPCInt64(0))
+        v.OnConnReadStream(conn, stream)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     test("OnConnError", async () => {
         const v = new Client("wdl://localhost")
         let runCount = 0
@@ -902,3 +1095,74 @@ describe("Client tests", () => {
 })
 
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
+// t.Run("conn == nil, heartbeat config error", func(t *testing.T) {
+//     assert := base.NewAssert(t)
+//     stream := core.NewStream()
+//     stream.SetCallbackID(0)
+//     stream.SetKind(core.StreamKindConnectResponse)
+//     stream.WriteString("12-87654321876543218765432187654321")
+//     stream.WriteInt64(32)
+//     stream.WriteInt64(4 * 1024 * 1024)
+//     stream.WriteInt64(0)
+//     v, streamConn, _ := fnTestClient()
+//     errorHub := core.NewTestStreamHub()
+//     v.errorHub = errorHub
+//     v.OnConnReadStream(streamConn, stream)
+//     assert(core.ParseResponseStream(errorHub.WaitStream())).
+//     Equal(nil, base.ErrClientConfig)
+// })
+//
+// t.Run("conn == nil, read heartbeatTimeout error", func(t *testing.T) {
+//     assert := base.NewAssert(t)
+//     stream := core.NewStream()
+//     stream.SetCallbackID(0)
+//     stream.SetKind(core.StreamKindConnectResponse)
+//     stream.WriteString("12-87654321876543218765432187654321")
+//     stream.WriteInt64(32)
+//     stream.WriteInt64(4 * 1024 * 1024)
+//     stream.WriteInt64(int64(time.Second))
+//     v, streamConn, _ := fnTestClient()
+//     errorHub := core.NewTestStreamHub()
+//     v.errorHub = errorHub
+//     v.OnConnReadStream(streamConn, stream)
+//     assert(core.ParseResponseStream(errorHub.WaitStream())).
+//     Equal(nil, base.ErrStream)
+// })
+//
+// t.Run("conn == nil, heartbeatTimeout config error", func(t *testing.T) {
+//     assert := base.NewAssert(t)
+//     stream := core.NewStream()
+//     stream.SetCallbackID(0)
+//     stream.SetKind(core.StreamKindConnectResponse)
+//     stream.WriteString("12-87654321876543218765432187654321")
+//     stream.WriteInt64(32)
+//     stream.WriteInt64(4 * 1024 * 1024)
+//     stream.WriteInt64(int64(time.Second))
+//     stream.WriteInt64(0)
+//     v, streamConn, _ := fnTestClient()
+//     errorHub := core.NewTestStreamHub()
+//     v.errorHub = errorHub
+//     v.OnConnReadStream(streamConn, stream)
+//     assert(core.ParseResponseStream(errorHub.WaitStream())).
+//     Equal(nil, base.ErrClientConfig)
+// })
+//
+// t.Run("conn == nil, stream is not finish", func(t *testing.T) {
+//     assert := base.NewAssert(t)
+//     stream := core.NewStream()
+//     stream.SetCallbackID(0)
+//     stream.SetKind(core.StreamKindConnectResponse)
+//     stream.WriteString("12-87654321876543218765432187654321")
+//     stream.WriteInt64(32)
+//     stream.WriteInt64(4 * 1024 * 1024)
+//     stream.WriteInt64(int64(time.Second))
+//     stream.WriteInt64(int64(2 * time.Second))
+//     stream.WriteBool(false)
+//     v, streamConn, _ := fnTestClient()
+//     errorHub := core.NewTestStreamHub()
+//     v.errorHub = errorHub
+//     v.OnConnReadStream(streamConn, stream)
+//     assert(core.ParseResponseStream(errorHub.WaitStream())).
+//     Equal(nil, base.ErrStream)
+// })

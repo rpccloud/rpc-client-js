@@ -455,7 +455,14 @@ export class Client implements IReceiver {
                 const [heartbeat, ok4] = stream.readInt64()
                 const [heartbeatTimeout, ok5] = stream.readInt64()
 
-                if (ok1 && ok2 && ok3 && ok4 && ok5 && stream.isReadFinish()) {
+                if (
+                    ok1
+                    && ok2 && numOfChannels.toNumber() > 0
+                    && ok3 && transLimit.toNumber() > 0
+                    && ok4 && heartbeat.toNumber() > 0
+                    && ok5 && heartbeatTimeout.toNumber() > 0
+                    && stream.isReadFinish()
+                ) {
                     if (sessionString != this.sessionString) {
                         // new session
                         this.sessionString = sessionString
@@ -463,8 +470,8 @@ export class Client implements IReceiver {
                         // update config
                         this.config.numOfChannels = numOfChannels.toNumber()
                         this.config.transLimit = transLimit.toNumber()
-                        this.config.heartbeatMS = heartbeat.toNumber() / 1000000
-                        this.config.heartbeatTimeoutMS = heartbeatTimeout.toNumber() / 1000000
+                        this.config.heartbeatMS = heartbeat.toNumber()
+                        this.config.heartbeatTimeoutMS = heartbeatTimeout.toNumber()
 
                         // build channels
                         this.channels = Array<Channel>()
@@ -483,6 +490,8 @@ export class Client implements IReceiver {
                     }
 
                     this.lastPingTimeMS = getTimeNowMS()
+                } else {
+                    this.OnConnError(streamConn, ErrStream)
                 }
             }
         } else {
