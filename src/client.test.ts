@@ -532,6 +532,14 @@ describe("Subscription tests", () => {
         expect(client["subscriptionMap"]).toStrictEqual(new Map())
         client.close()
     })
+
+    test("Subscription_close, client is nil", async () => {
+        const client = new Client("")
+        const v = new __test__.Subscription(13, client, () => void {})
+        v["client"] = null
+        v.close()
+        expect(v["id"]).toStrictEqual(13)
+    })
 })
 
 describe("Client tests", () => {
@@ -851,6 +859,7 @@ describe("Client tests", () => {
             expect(e.getMessage().includes("client.test.ts"))
                 .toStrictEqual(true)
         }
+        v.close()
     })
 
     test("close, test ok", async () => {
@@ -876,6 +885,7 @@ describe("Client tests", () => {
         }
         v.OnConnOpen(conn)
         expect(runOK).toStrictEqual(true)
+        v.close()
     })
 
     test("OnConnReadStream, conn == nil, callbackID != 0", () => {
@@ -969,7 +979,7 @@ describe("Client tests", () => {
         v.close()
     })
 
-    test("OnConnReadStream, read transLimit error", () => {
+    test("OnConnReadStream, conn == nil, read transLimit error", () => {
         let runOK = false
         const v = new Client("wdl://localhost")
         const conn = new FakeConn()
@@ -989,7 +999,7 @@ describe("Client tests", () => {
         v.close()
     })
 
-    test("OnConnReadStream, transLimit config error", () => {
+    test("OnConnReadStream, conn == nil, transLimit config error", () => {
         let runOK = false
         const v = new Client("wdl://localhost")
         const conn = new FakeConn()
@@ -1010,7 +1020,7 @@ describe("Client tests", () => {
         v.close()
     })
 
-    test("OnConnReadStream, read heartbeat error", () => {
+    test("OnConnReadStream, conn == nil, read heartbeat error", () => {
         let runOK = false
         const v = new Client("wdl://localhost")
         const conn = new FakeConn()
@@ -1031,7 +1041,7 @@ describe("Client tests", () => {
         v.close()
     })
 
-    test("OnConnReadStream, heartbeat config error", () => {
+    test("OnConnReadStream, conn == nil, heartbeat config error", () => {
         let runOK = false
         const v = new Client("wdl://localhost")
         const conn = new FakeConn()
@@ -1053,23 +1063,412 @@ describe("Client tests", () => {
         v.close()
     })
 
+    test("OnConnReadStream, conn == nil, read heartbeatTimeout error", () => {
+        let runOK = false
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        v.setErrorHub({
+            OnReceiveStream(s: RPCStream) {
+                expect(parseResponseStream(s)).toStrictEqual([null, ErrStream])
+                runOK = true
+            },
+        })
+        const stream = new RPCStream()
+        stream.setCallbackID(0)
+        stream.setKind(RPCStream.StreamKindConnectResponse)
+        stream.writeString("12-87654321876543218765432187654321")
+        stream.writeInt64(toRPCInt64(32))
+        stream.writeInt64(toRPCInt64(4 * 1024 * 1024))
+        stream.writeInt64(toRPCInt64(4000))
+        v.OnConnReadStream(conn, stream)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
+
+    test("OnConnReadStream, conn == nil, heartbeatTimeout config error", () => {
+        let runOK = false
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        v.setErrorHub({
+            OnReceiveStream(s: RPCStream) {
+                expect(parseResponseStream(s)).toStrictEqual([null, ErrStream])
+                runOK = true
+            },
+        })
+        const stream = new RPCStream()
+        stream.setCallbackID(0)
+        stream.setKind(RPCStream.StreamKindConnectResponse)
+        stream.writeString("12-87654321876543218765432187654321")
+        stream.writeInt64(toRPCInt64(32))
+        stream.writeInt64(toRPCInt64(4 * 1024 * 1024))
+        stream.writeInt64(toRPCInt64(4000))
+        stream.writeInt64(toRPCInt64(0))
+        v.OnConnReadStream(conn, stream)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
+
+    test("OnConnReadStream, conn == nil, stream is not finish", () => {
+        let runOK = false
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        v.setErrorHub({
+            OnReceiveStream(s: RPCStream) {
+                expect(parseResponseStream(s)).toStrictEqual([null, ErrStream])
+                runOK = true
+            },
+        })
+        const stream = new RPCStream()
+        stream.setCallbackID(0)
+        stream.setKind(RPCStream.StreamKindConnectResponse)
+        stream.writeString("12-87654321876543218765432187654321")
+        stream.writeInt64(toRPCInt64(32))
+        stream.writeInt64(toRPCInt64(4 * 1024 * 1024))
+        stream.writeInt64(toRPCInt64(4000))
+        stream.writeInt64(toRPCInt64(8000))
+        stream.writeBool(false)
+        v.OnConnReadStream(conn, stream)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
+
+    test("OnConnReadStream conn == nil, new sessionString", () => {
+        const stream = new RPCStream()
+        stream.setCallbackID(0)
+        stream.setKind(RPCStream.StreamKindConnectResponse)
+        stream.writeString("12-87654321876543218765432187654321")
+        stream.writeInt64(toRPCInt64(32))
+        stream.writeInt64(toRPCInt64(4 * 1024 * 1024))
+        stream.writeInt64(toRPCInt64(1000))
+        stream.writeInt64(toRPCInt64(2000))
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        v.OnConnReadStream(conn, stream)
+
+        expect(v["sessionString"]).toStrictEqual("12-87654321876543218765432187654321")
+        expect(v["config"].numOfChannels).toStrictEqual(32)
+        expect(v["config"].transLimit).toStrictEqual(4 * 1024 * 1024)
+        expect(v["config"].heartbeatMS).toStrictEqual(1000)
+        expect(v["config"].heartbeatTimeoutMS).toStrictEqual(2000)
+        for (let i = 0; i < 32; i++) {
+            expect((v as any).channels[i].item).toStrictEqual(null)
+        }
+        expect(v["lastPingTimeMS"] > 0).toStrictEqual(true)
+        v.close()
+    })
+
+    test("OnConnReadStream, conn == nil, reuse sessionString", () => {
+        const stream = new RPCStream()
+        stream.setCallbackID(0)
+        stream.setKind(RPCStream.StreamKindConnectResponse)
+        stream.writeString("12-87654321876543218765432187654321")
+        stream.writeInt64(toRPCInt64(32))
+        stream.writeInt64(toRPCInt64(4 * 1024 * 1024))
+        stream.writeInt64(toRPCInt64(1000))
+        stream.writeInt64(toRPCInt64(2000))
+
+        let runCount = 0
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        conn.onWriteStream = () => {
+            runCount++
+        }
+        v.setErrorHub(null)
+        v["sessionString"] = "12-87654321876543218765432187654321"
+
+        // channels === null, ignore the message
+        v.OnConnReadStream(conn, stream)
+        v["conn"] = null
+        stream.setReadPos(RPCStream["streamPosBody"])
+
+        // channels !== null
+        v["channels"] = []
+        for (let i = 0; i < 32; i++) {
+            const channel = new __test__.Channel(i)
+            if (i < 16) {
+                channel.use(new __test__.SendItem(1000), 32)
+            }
+            v["channels"].push(channel)
+        }
+        v.OnConnReadStream(conn, stream)
+        expect(runCount).toStrictEqual(16)
+        expect(v["lastPingTimeMS"] > 0).toStrictEqual(true)
+
+        v.close()
+    })
+
+    test("OnConnReadStream, conn !== null, StreamKindPong error", () => {
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        const stream = new RPCStream()
+        let runOK = false
+        v["conn"] = conn
+        stream.setKind(RPCStream.StreamKindPong)
+        stream.write("error")
+
+        v.setErrorHub({
+            OnReceiveStream(stream: RPCStream) {
+                expect(parseResponseStream(stream))
+                    .toStrictEqual([null, ErrStream])
+                runOK = true
+            },
+        })
+
+        v.OnConnReadStream(conn, stream)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
+
+    test("OnConnReadStream, p.conn != nil, StreamKindPong ok", async () => {
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        const stream = new RPCStream()
+        let errCount = 0
+        v["conn"] = conn
+        stream.setKind(RPCStream.StreamKindPong)
+
+        v.setErrorHub({
+            OnReceiveStream() {
+                errCount++
+            },
+        })
+
+        v.OnConnReadStream(conn, stream)
+        expect(errCount).toStrictEqual(0)
+        v.close()
+    })
+
+    test("OnConnReadStream, StreamKindRPCResponseOK ok", async () => {
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        const stream = new RPCStream()
+        v["conn"] = conn
+        v.setErrorHub(null)
+        stream.setCallbackID(17 + 32)
+        stream.setKind(RPCStream.StreamKindRPCResponseOK)
+        stream.writeBool(true)
+
+        // channels is null, ignore the stream
+        v.OnConnReadStream(conn, stream)
+
+        // channels is not null
+        v["channels"] = []
+        for (let i = 0; i < 32; i++) {
+            const channel = new __test__.Channel(i)
+            channel.use(new __test__.SendItem(1000), 32)
+            v["channels"].push(channel)
+        }
+
+        const promise = (v as any).channels[17].item.deferred.promise
+        v.OnConnReadStream(conn, stream)
+        expect(await promise).toStrictEqual(true)
+        v.close()
+    })
+
+    test("OnConnReadStream, StreamKindRPCResponseOK error", async () => {
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        const stream = new RPCStream()
+        v["conn"] = conn
+        v.setErrorHub(null)
+        stream.setCallbackID(17)
+        stream.setKind(RPCStream.StreamKindRPCResponseOK)
+        stream.writeBool(true)
+
+        v["channels"] = []
+        for (let i = 0; i < 32; i++) {
+            const channel = new __test__.Channel(i)
+            channel.use(new __test__.SendItem(1000), 32)
+            v["channels"].push(channel)
+        }
+
+        v.OnConnReadStream(conn, stream)
+        expect(!!(v as any).channels[17].item).toStrictEqual(true)
+        v.close()
+    })
+
+    test("OnConnReadStream, StreamKindRPCResponseError ok", async () => {
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        const stream = new RPCStream()
+        v["conn"] = conn
+        v.setErrorHub(null)
+        stream.setCallbackID(17 + 32)
+        stream.setKind(RPCStream.StreamKindRPCResponseError)
+        stream.writeInt64(toRPCInt64(ErrStream.getCode()))
+        stream.writeString(ErrStream.getMessage())
+
+        // channels is null, ignore the stream
+        v.OnConnReadStream(conn, stream)
+
+        // channels is not null
+        v["channels"] = []
+        for (let i = 0; i < 32; i++) {
+            const channel = new __test__.Channel(i)
+            channel.use(new __test__.SendItem(1000), 32)
+            v["channels"].push(channel)
+        }
+
+        const promise = (v as any).channels[17].item.deferred.promise
+        v.OnConnReadStream(conn, stream)
+        let runOK = false
+        try {
+            await promise
+        } catch (e) {
+            expect(e).toStrictEqual(ErrStream)
+            runOK = true
+        } finally {
+            expect(runOK).toStrictEqual(true)
+        }
+        v.close()
+    })
+
+    test("OnConnReadStream, StreamKindRPCResponseError error", async () => {
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        const stream = new RPCStream()
+        v["conn"] = conn
+        v.setErrorHub(null)
+        stream.setCallbackID(17)
+        stream.setKind(RPCStream.StreamKindRPCResponseError)
+        stream.writeInt64(toRPCInt64(ErrStream.getCode()))
+        stream.writeString(ErrStream.getMessage())
+
+        v["channels"] = []
+        for (let i = 0; i < 32; i++) {
+            const channel = new __test__.Channel(i)
+            channel.use(new __test__.SendItem(1000), 32)
+            v["channels"].push(channel)
+        }
+
+        v.OnConnReadStream(conn, stream)
+        expect(!!(v as any).channels[17].item).toStrictEqual(true)
+        v.close()
+    })
+
+    test("OnConnReadStream, StreamKindRPCBoardCast path error", async () => {
+        let runOK = false
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        const stream = new RPCStream()
+        v["conn"] = conn
+        v.setErrorHub({
+            OnReceiveStream(stream: RPCStream) {
+                expect(parseResponseStream(stream))
+                    .toStrictEqual([null, ErrStream])
+                runOK = true
+            }
+        })
+
+        stream.setKind(RPCStream.StreamKindRPCBoardCast)
+        v.OnConnReadStream(conn, stream)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
+
+    test("OnConnReadStream, StreamKindRPCBoardCast value error", async () => {
+        let runOK = false
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        const stream = new RPCStream()
+        v["conn"] = conn
+        v.setErrorHub({
+            OnReceiveStream(stream: RPCStream) {
+                expect(parseResponseStream(stream))
+                    .toStrictEqual([null, ErrStream])
+                runOK = true
+            }
+        })
+
+        stream.setKind(RPCStream.StreamKindRPCBoardCast)
+        stream.writeString("#.test%Message")
+        v.OnConnReadStream(conn, stream)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
 
 
+    test("OnConnReadStream, StreamKindRPCBoardCast not finish", async () => {
+        let runOK = false
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        const stream = new RPCStream()
+        v["conn"] = conn
+        v.setErrorHub({
+            OnReceiveStream(stream: RPCStream) {
+                expect(parseResponseStream(stream))
+                    .toStrictEqual([null, ErrStream])
+                runOK = true
+            }
+        })
 
+        stream.setKind(RPCStream.StreamKindRPCBoardCast)
+        stream.writeString("#.test%Message")
+        stream.writeBool(true)
+        stream.writeString("error")
+        v.OnConnReadStream(conn, stream)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
 
+    test("OnConnReadStream, StreamKindRPCBoardCast path not exist", async () => {
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        v["conn"] = conn
+        const stream = new RPCStream()
+        stream.setKind(RPCStream.StreamKindRPCBoardCast)
+        stream.writeString("#.test%NotExist")
+        stream.writeString("Hello")
+        v.OnConnReadStream(conn, stream)
+        v.close()
+    })
 
+    test("OnConnReadStream, StreamKindRPCBoardCast ok", async () => {
+        let runOK = false
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        v["conn"] = conn
+        const stream = new RPCStream()
+        stream.setKind(RPCStream.StreamKindRPCBoardCast)
+        stream.writeString("#.test%Message")
+        stream.writeString("Hello")
 
+        v.subscribe("#.test", "Message", v => {
+            expect(v).toStrictEqual("Hello")
+            runOK  = true
+        })
+        v.OnConnReadStream(conn, stream)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
 
+    test("OnConnReadStream, getKind() error", async () => {
+        let runOK = false
+        const v = new Client("wdl://localhost")
+        const conn = new FakeConn()
+        const stream = new RPCStream()
+        v["conn"] = conn
+        v.setErrorHub({
+            OnReceiveStream(stream: RPCStream) {
+                expect(parseResponseStream(stream)).toStrictEqual([null, ErrStream])
+                runOK = true
+            }
+        })
+        stream.setCallbackID(17 + 32)
+        stream.setKind(RPCStream.StreamKindConnectResponse)
 
+        v["channels"] = []
+        for (let i = 0; i < 32; i++) {
+            const channel = new __test__.Channel(i)
+            channel.use(new __test__.SendItem(1000), 32)
+            v["channels"].push(channel)
+        }
 
-
-
-
-
-
-
-
-
+        v.OnConnReadStream(conn, stream)
+        expect(!!(v as any).channels[17].item).toStrictEqual(true)
+        expect(runOK).toStrictEqual(true)
+        v.close()
+    })
 
     test("OnConnError", async () => {
         const v = new Client("wdl://localhost")
@@ -1081,9 +1480,11 @@ describe("Client tests", () => {
                 runCount++
             },
         }
-        v.OnConnError(null, ErrStream)
+        v.OnConnError(null, undefined as any)
+        v.OnConnError(new FakeConn(), null as any)
         v.OnConnError(new FakeConn(), ErrStream)
-        expect(runCount).toStrictEqual(2)
+        expect(runCount).toStrictEqual(1)
+        v.close()
     })
 
     test("OnConnClose", async () => {
@@ -1091,78 +1492,9 @@ describe("Client tests", () => {
         v["conn"] = new FakeConn()
         v.OnConnClose()
         expect(v["conn"] === null).toStrictEqual(true)
+        v.close()
     })
 })
 
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-// t.Run("conn == nil, heartbeat config error", func(t *testing.T) {
-//     assert := base.NewAssert(t)
-//     stream := core.NewStream()
-//     stream.SetCallbackID(0)
-//     stream.SetKind(core.StreamKindConnectResponse)
-//     stream.WriteString("12-87654321876543218765432187654321")
-//     stream.WriteInt64(32)
-//     stream.WriteInt64(4 * 1024 * 1024)
-//     stream.WriteInt64(0)
-//     v, streamConn, _ := fnTestClient()
-//     errorHub := core.NewTestStreamHub()
-//     v.errorHub = errorHub
-//     v.OnConnReadStream(streamConn, stream)
-//     assert(core.ParseResponseStream(errorHub.WaitStream())).
-//     Equal(nil, base.ErrClientConfig)
-// })
-//
-// t.Run("conn == nil, read heartbeatTimeout error", func(t *testing.T) {
-//     assert := base.NewAssert(t)
-//     stream := core.NewStream()
-//     stream.SetCallbackID(0)
-//     stream.SetKind(core.StreamKindConnectResponse)
-//     stream.WriteString("12-87654321876543218765432187654321")
-//     stream.WriteInt64(32)
-//     stream.WriteInt64(4 * 1024 * 1024)
-//     stream.WriteInt64(int64(time.Second))
-//     v, streamConn, _ := fnTestClient()
-//     errorHub := core.NewTestStreamHub()
-//     v.errorHub = errorHub
-//     v.OnConnReadStream(streamConn, stream)
-//     assert(core.ParseResponseStream(errorHub.WaitStream())).
-//     Equal(nil, base.ErrStream)
-// })
-//
-// t.Run("conn == nil, heartbeatTimeout config error", func(t *testing.T) {
-//     assert := base.NewAssert(t)
-//     stream := core.NewStream()
-//     stream.SetCallbackID(0)
-//     stream.SetKind(core.StreamKindConnectResponse)
-//     stream.WriteString("12-87654321876543218765432187654321")
-//     stream.WriteInt64(32)
-//     stream.WriteInt64(4 * 1024 * 1024)
-//     stream.WriteInt64(int64(time.Second))
-//     stream.WriteInt64(0)
-//     v, streamConn, _ := fnTestClient()
-//     errorHub := core.NewTestStreamHub()
-//     v.errorHub = errorHub
-//     v.OnConnReadStream(streamConn, stream)
-//     assert(core.ParseResponseStream(errorHub.WaitStream())).
-//     Equal(nil, base.ErrClientConfig)
-// })
-//
-// t.Run("conn == nil, stream is not finish", func(t *testing.T) {
-//     assert := base.NewAssert(t)
-//     stream := core.NewStream()
-//     stream.SetCallbackID(0)
-//     stream.SetKind(core.StreamKindConnectResponse)
-//     stream.WriteString("12-87654321876543218765432187654321")
-//     stream.WriteInt64(32)
-//     stream.WriteInt64(4 * 1024 * 1024)
-//     stream.WriteInt64(int64(time.Second))
-//     stream.WriteInt64(int64(2 * time.Second))
-//     stream.WriteBool(false)
-//     v, streamConn, _ := fnTestClient()
-//     errorHub := core.NewTestStreamHub()
-//     v.errorHub = errorHub
-//     v.OnConnReadStream(streamConn, stream)
-//     assert(core.ParseResponseStream(errorHub.WaitStream())).
-//     Equal(nil, base.ErrStream)
-// })

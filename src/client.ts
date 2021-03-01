@@ -31,8 +31,9 @@ export function parseResponseStream(
 
             if (ok1 && ok2 && stream.isReadFinish() && errCode < 4294967296) {
                 return [null, new RPCError(errCode, message)]
+            } else {
+                return [null, ErrStream]
             }
-            return [null, ErrStream]
         }
         default:
             return [null, ErrStream]
@@ -52,9 +53,7 @@ export class LogToScreenErrorStreamHub implements IStreamHub {
         if (kind === RPCStream.StreamKindSystemErrorReport ||
             kind === RPCStream.StreamKindRPCResponseError) {
             const err = parseResponseStream(stream)[1]
-            if (err !== null) {
-                console.log(err.toString())
-            }
+            console.log(err?.toString())
         }
     }
 }
@@ -510,10 +509,8 @@ export class Client implements IReceiver {
                     const channel = this.channels[callbackID % this.channels.length]
                     if (channel.item && channel.sequence == callbackID) {
                         let [, err] = parseResponseStream(stream)
-                        if (err === null) {
-                            err = ErrStream
-                        }
-                        err = err.addDebug(channel.item.stack)
+                        // the err will not be null in any case
+                        err = (err as RPCError).addDebug(channel.item.stack)
                         this.errorHub.OnReceiveStream(
                             Client.makeErrorResponseStream(err, callbackID)
                         )
