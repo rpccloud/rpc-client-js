@@ -557,9 +557,9 @@ describe("Client tests", () => {
         try {
             await v.send(100, "#.user:Sleep")
         } catch (e) {
-            expect(e).toStrictEqual(
-                ErrClientTimeout.addDebug("#.user:Sleep timeout"),
-            )
+            expect(e.toString().startsWith(
+                ErrClientTimeout.addDebug("#.user:Sleep timeout").toString(),
+            )).toStrictEqual(true)
             errCount++
         } finally {
             expect(errCount).toStrictEqual(1)

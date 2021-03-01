@@ -238,8 +238,12 @@ export class Client implements IReceiver {
         return ++this.seed
     }
 
-    public setErrorHub(errorHub: IStreamHub): void {
-        this.errorHub = errorHub
+    public setErrorHub(errorHub: IStreamHub | null): void {
+        if (errorHub === null) {
+            this.errorHub = {OnReceiveStream: () => ({})}
+        } else {
+            this.errorHub = errorHub
+        }
     }
 
     private tryToSendPing(nowMS: number): void {
