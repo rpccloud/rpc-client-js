@@ -302,6 +302,13 @@ describe("parseResponseStream tests", () => {
         v.writeBool(true)
         expect(parseResponseStream(v)).toStrictEqual([null, ErrStream])
     })
+
+    test("stream is nil", async () => {
+        expect(parseResponseStream(undefined as any))
+            .toStrictEqual([null, ErrStream])
+        expect(parseResponseStream(null as any))
+            .toStrictEqual([null, ErrStream])
+    })
 })
 
 describe("LogToScreenErrorStreamHub tests", () => {
@@ -829,12 +836,62 @@ describe("Client tests", () => {
         v.close()
     })
 
+    test("send, timeout in pre delivery list", async () => {
+        const v = new Client("wdl://localhost", true)
+        try {
+            await v.send(100, "#.test:Timeout")
+        } catch (e) {
+            expect(e.getMessage().includes("Client.send"))
+                .toStrictEqual(true)
+            expect(e.getMessage().includes("client.test.ts"))
+                .toStrictEqual(true)
+        }
+    })
+
     test("close, test ok", async () => {
         const v = new Client("ws://localhost") as any
         expect(v.timer !== null).toStrictEqual(true)
         expect(v.close()).toStrictEqual(true)
         expect(v.timer === null).toStrictEqual(true)
         expect(v.close()).toStrictEqual(false)
+    })
+
+    test("OnConnOpen", async () => {
+        const v = new Client("wdl://localhost")
+        v["sessionString"] = "123456"
+        const conn = new FakeConn()
+        let runOK = false
+        conn.onWriteStream = (stream: RPCStream) => {
+            expect(stream.getKind())
+                .toStrictEqual(RPCStream.StreamKindConnectRequest)
+            expect(stream.getCallbackID()).toStrictEqual(0)
+            expect(stream.readString()).toStrictEqual(["123456", true])
+            expect(stream.isReadFinish()).toStrictEqual(true)
+            runOK = true
+        }
+        v.OnConnOpen(conn)
+        expect(runOK).toStrictEqual(true)
+    })
+
+    test("OnConnError", async () => {
+        const v = new Client("wdl://localhost")
+        let runOK = false
+        v["errorHub"] = {
+            OnReceiveStream: (stream: RPCStream) => {
+                expect(parseResponseStream(stream))
+                    .toStrictEqual([null, ErrStream])
+                runOK = true
+            },
+        }
+        v.OnConnError(null, ErrStream)
+        expect(runOK).toStrictEqual(true)
+    })
+
+    test("OnConnClose", async () => {
+        const v = new Client("wdl://localhost")
+        v["conn"] = new FakeConn()
+        v.OnConnClose()
+        expect(v["conn"] === null).toStrictEqual(true)
     })
 })
 

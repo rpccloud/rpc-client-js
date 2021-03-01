@@ -54,7 +54,7 @@ export class WebSocketStreamConn implements IStreamConn {
                 stream.setWritePos(0)
                 if (stream.putBytesTo(new Uint8Array(event.data), 0)) {
                     if (stream.checkStream()) {
-                        this.activeTimeMS =  getTimeNowMS()
+                        this.activeTimeMS = getTimeNowMS()
                         receiver.OnConnReadStream(this, stream)
                     } else {
                         receiver.OnConnError(this, ErrStream)
@@ -109,7 +109,7 @@ export class WebSocketStreamConn implements IStreamConn {
     }
 
     public isActive(nowMS: number, timeoutMS: number): boolean {
-        return nowMS-this.activeTimeMS < timeoutMS
+        return nowMS - this.activeTimeMS < timeoutMS
     }
 }
 
@@ -118,12 +118,18 @@ export class ClientAdapter {
     private checkHandler: number | null
     private readonly connectString: string
     private readonly receiver: IReceiver
+    private readonly stack: string | undefined
 
-    public constructor(connectString: string, receiver: IReceiver) {
+    public constructor(
+        connectString: string,
+        receiver: IReceiver,
+        stack: string | undefined,
+    ) {
         this.checkHandler = null
         this.connectString = connectString
         this.receiver = receiver
         this.conn = null
+        this.stack = stack
     }
 
     public open(): boolean {
@@ -171,9 +177,9 @@ export class ClientAdapter {
 
             this.receiver.OnConnError(
                 null,
-                ErrJSUnsupportedProtocol.addDebug(
-                    `unsupported protocol ${protocol}`,
-                ),
+                ErrJSUnsupportedProtocol
+                    .addDebug(`unsupported protocol ${protocol}`)
+                    .addDebug(this.stack),
             )
             return null
         } catch (e) {

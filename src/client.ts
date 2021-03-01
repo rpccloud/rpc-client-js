@@ -208,13 +208,15 @@ export class Client implements IReceiver {
     private readonly subscriptionMap: Map<string, Array<Subscription>>
     private errorHub: IStreamHub
     private timer: number | null
-    public debugMode = false
+    private readonly debugMode: boolean
 
-    constructor(connectString: string) {
+    constructor(connectString: string, debugMode?: boolean) {
+        const stack = debugMode ? new Error().stack : ""
+        this.debugMode = !!debugMode
         this.seed = 0
         this.config = new Config()
         this.sessionString = ""
-        this.adapter = new ClientAdapter(connectString, this)
+        this.adapter = new ClientAdapter(connectString, this, stack)
         this.conn = null
         this.preSendHead = null
         this.preSendTail = null
@@ -380,7 +382,7 @@ export class Client implements IReceiver {
         const item = new SendItem(timeoutMS)
 
         if (this.debugMode) {
-            item.stack = new Error("Stack:").stack
+            item.stack = new Error().stack
         }
 
         item.sendStream.setKind(RPCStream.StreamKindRPCRequest)

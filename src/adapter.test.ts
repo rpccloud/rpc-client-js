@@ -90,7 +90,7 @@ describe("WebSocketStreamConn tests", () => {
         const ws = new WebSocket("ws://127.0.0.1:8080")
         const receiver = new TestReceiver()
         const v = new WebSocketStreamConn(ws, receiver)
-        const streamBuffer = new Uint8Array([1,2,3,4,5,6])
+        const streamBuffer = new Uint8Array([1, 2, 3, 4, 5, 6])
         const arrayBuffer = new ArrayBuffer(streamBuffer.length)
         const arrayBufferView = new Uint8Array(arrayBuffer)
         for (let i = 0; i < arrayBuffer.byteLength; i++) {
@@ -296,11 +296,12 @@ describe("WebSocketStreamConn tests", () => {
 describe("ClientAdapter tests", () => {
     test("ClientAdapter_new", async () => {
         const receiver = new TestReceiver()
-        const v = new ClientAdapter("ws://127.0.0.1:8080", receiver)
+        const v = new ClientAdapter("ws://127.0.0.1:8080", receiver, "stack")
         expect(v["checkHandler"]).toStrictEqual(null)
         expect(v["connectString"]).toStrictEqual("ws://127.0.0.1:8080")
         expect(v["receiver"]).toStrictEqual(receiver)
         expect(v["conn"]).toStrictEqual(null)
+        expect(v["stack"]).toStrictEqual("stack")
     })
 
     test("ClientAdapter_open error connectString", async () => {
@@ -312,7 +313,7 @@ describe("ClientAdapter tests", () => {
             ))
             errCount++
         }
-        const v = new ClientAdapter("wsd://127.0.0.1:8080", receiver)
+        const v = new ClientAdapter("wsd://127.0.0.1:8080", receiver, "")
 
         expect(v.open()).toStrictEqual(true)
         await sleep(4000)
@@ -328,7 +329,7 @@ describe("ClientAdapter tests", () => {
             expect(e).toStrictEqual(ErrJSWebSocketOnError.addDebug("error"))
             errCount++
         }
-        const v = new ClientAdapter("ws://127.0.0.1:8080", receiver)
+        const v = new ClientAdapter("ws://127.0.0.1:8080", receiver, "")
 
         expect(v.open()).toStrictEqual(true)
         await sleep(4000)
@@ -338,7 +339,9 @@ describe("ClientAdapter tests", () => {
     })
 
     test("ClientAdapter_open", async () => {
-        const v = new ClientAdapter("ws://127.0.0.1:8080", new TestReceiver())
+        const v = new ClientAdapter(
+            "ws://127.0.0.1:8080", new TestReceiver(), "",
+        )
         expect(v.open()).toStrictEqual(true)
         expect(v["checkHandler"] as number > 0).toStrictEqual(true)
         expect(v.open()).toStrictEqual(false)
@@ -354,7 +357,9 @@ describe("ClientAdapter tests", () => {
     })
 
     test("ClientAdapter_close", async () => {
-        const v = new ClientAdapter("ws://127.0.0.1:8080", new TestReceiver())
+        const v = new ClientAdapter(
+            "ws://127.0.0.1:8080", new TestReceiver(), "",
+        )
         expect(v.open()).toStrictEqual(true)
         expect(v.close()).toStrictEqual(true)
         expect(v["checkHandler"] as number === null).toStrictEqual(true)
@@ -363,20 +368,20 @@ describe("ClientAdapter tests", () => {
 
     test("ClientAdapter_dial ws ok", async () => {
         const receiver = new TestReceiver()
-        const v = new ClientAdapter("ws://127.0.0.1:8080", receiver)
+        const v = new ClientAdapter("ws://127.0.0.1:8080", receiver, "")
         expect(v["dial"]() !== null).toStrictEqual(true)
     })
 
     test("ClientAdapter_dial wss ok", async () => {
         const receiver = new TestReceiver()
-        const v = new ClientAdapter("wss://127.0.0.1:8080", receiver)
+        const v = new ClientAdapter("wss://127.0.0.1:8080", receiver, "")
         expect(v["dial"]() !== null).toStrictEqual(true)
     })
 
     test("ClientAdapter_dial unknown protocol", async () => {
         let errCount = 0
         const receiver = new TestReceiver()
-        const v = new ClientAdapter("abc://127.0.0.1:8080", receiver)
+        const v = new ClientAdapter("abc://127.0.0.1:8080", receiver, "")
         receiver.onConnError = (_, e) => {
             expect(e).toStrictEqual(ErrJSUnsupportedProtocol.addDebug(
                 "unsupported protocol abc"
@@ -390,7 +395,7 @@ describe("ClientAdapter tests", () => {
     test("ClientAdapter_dial panic", async () => {
         let errCount = 0
         const receiver = new TestReceiver()
-        const v = new ClientAdapter("ws:@@@@@@@@@", receiver)
+        const v = new ClientAdapter("ws:@@@@@@@@@", receiver, "")
         receiver.onConnError = (_, e) => {
             expect(e).toStrictEqual(ErrJSWebSocketDail.addDebug(
                 "SyntaxError: The URL 'ws:@@@@@@@@@' is invalid."
