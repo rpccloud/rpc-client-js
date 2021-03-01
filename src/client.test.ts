@@ -133,6 +133,7 @@ function fnTestCheckPreSendList(c: any, arr: any): boolean {
 
 function testTryToTimeout(totalItems: number, timeoutItems: number): boolean {
     const v = new Client("error001") as any
+    v.setErrorHub(null)
 
     if (totalItems < 0 || totalItems < timeoutItems) {
         return false

@@ -209,14 +209,17 @@ export class Client implements IReceiver {
     private errorHub: IStreamHub
     private timer: number | null
     private readonly debugMode: boolean
+    private readonly stack: string | undefined
 
     constructor(connectString: string, debugMode?: boolean) {
-        const stack = debugMode ? new Error().stack : ""
+        this.stack = new Error().stack
         this.debugMode = !!debugMode
         this.seed = 0
         this.config = new Config()
         this.sessionString = ""
-        this.adapter = new ClientAdapter(connectString, this, stack)
+        this.adapter = new ClientAdapter(
+            connectString, this, this.debugMode ? this.stack : undefined,
+        )
         this.conn = null
         this.preSendHead = null
         this.preSendTail = null
