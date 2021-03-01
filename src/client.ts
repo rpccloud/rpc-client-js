@@ -217,9 +217,7 @@ export class Client implements IReceiver {
         this.seed = 0
         this.config = new Config()
         this.sessionString = ""
-        this.adapter = new ClientAdapter(
-            connectString, this, this.debugMode ? this.stack : undefined,
-        )
+        this.adapter = new ClientAdapter(connectString, this, this.stack)
         this.conn = null
         this.preSendHead = null
         this.preSendTail = null

@@ -537,6 +537,7 @@ describe("Subscription tests", () => {
 describe("Client tests", () => {
     test("new", async () => {
         const v = new Client("error003")
+        v.setErrorHub(null)
         expect(v["seed"]).toStrictEqual(0)
         expect(v["config"]["numOfChannels"]).toStrictEqual(0)
         expect(v["config"]["transLimit"]).toStrictEqual(0)
@@ -628,6 +629,7 @@ describe("Client tests", () => {
 
     test("tryToTimeout, channels has been swept", async () => {
         const v = new Client("ws://localhost") as any
+        v.setErrorHub(null)
         v.lastPingTimeMS = 10000
         v.config.heartbeatTimeoutMS = 9
         v.channels = [new __test__.Channel(0)]
@@ -808,6 +810,7 @@ describe("Client tests", () => {
         })
 
         const v = new Client("wdl://localhost") as any
+        v.setErrorHub(null)
         const conn = new FakeConn()
         conn.onIsActive = () => true
         conn.onIsClosed = () => false
@@ -839,6 +842,7 @@ describe("Client tests", () => {
 
     test("send, timeout in pre delivery list", async () => {
         const v = new Client("wdl://localhost", true)
+        v.setErrorHub(null)
         try {
             await v.send(100, "#.test:Timeout")
         } catch (e) {
