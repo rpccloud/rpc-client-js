@@ -880,16 +880,17 @@ describe("Client tests", () => {
 
     test("OnConnError", async () => {
         const v = new Client("wdl://localhost")
-        let runOK = false
+        let runCount = 0
         v["errorHub"] = {
             OnReceiveStream: (stream: RPCStream) => {
                 expect(parseResponseStream(stream))
                     .toStrictEqual([null, ErrStream])
-                runOK = true
+                runCount++
             },
         }
         v.OnConnError(null, ErrStream)
-        expect(runOK).toStrictEqual(true)
+        v.OnConnError(new FakeConn(), ErrStream)
+        expect(runCount).toStrictEqual(2)
     })
 
     test("OnConnClose", async () => {
