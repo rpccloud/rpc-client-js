@@ -12,7 +12,7 @@ import {
     parseResponseStream
 } from "./client"
 import {getTimeNowMS, sleep} from "./utils"
-import {IStreamConn, WebSocketStreamConn} from "./adapter"
+import {IStreamConn} from "./adapter"
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -595,7 +595,7 @@ describe("Client tests", () => {
     test("tryToSendPing, not need ping", async () => {
         const v = new Client("error007")
         v["config"]["heartbeatMS"] = 1000
-        v["conn"] = new WebSocketStreamConn(new WebSocket("ws://localhost"), v)
+        v["conn"] = new FakeConn()
         v["tryToSendPing"](1)
         expect(v["lastPingTimeMS"]).toStrictEqual(0)
         v.close()

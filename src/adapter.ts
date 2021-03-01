@@ -42,7 +42,7 @@ export class WebSocketStreamConn implements IStreamConn {
     private receiver: IReceiver
     private activeTimeMS: number
 
-    public constructor(ws: WebSocket, receiver: IReceiver) {
+    public constructor(ws: WebSocket, receiver: IReceiver, stack?: string) {
         ws.binaryType = "arraybuffer"
         this.ws = ws
         this.status = WebSocketStreamConn.StatusOpening
@@ -75,7 +75,10 @@ export class WebSocketStreamConn implements IStreamConn {
             this.status = WebSocketStreamConn.StatusClosed
         }
         ws.onerror = (ev: Event) => {
-            receiver.OnConnError(this, ErrJSWebSocketOnError.addDebug(ev.type))
+            receiver.OnConnError(
+                this,
+                ErrJSWebSocketOnError.addDebug(ev.type).addDebug(stack),
+            )
             this.close()
         }
     }
@@ -118,12 +121,12 @@ export class ClientAdapter {
     private checkHandler: number | null
     private readonly connectString: string
     private readonly receiver: IReceiver
-    private readonly stack: string | undefined
+    private readonly stack?: string
 
     public constructor(
         connectString: string,
         receiver: IReceiver,
-        stack: string | undefined,
+        stack?: string,
     ) {
         this.checkHandler = null
         this.connectString = connectString
@@ -172,7 +175,7 @@ export class ClientAdapter {
 
             if (protocol === "ws" || protocol === "wss") {
                 const ws = new WebSocket(this.connectString)
-                return new WebSocketStreamConn(ws, this.receiver)
+                return new WebSocketStreamConn(ws, this.receiver, this.stack)
             }
 
             this.receiver.OnConnError(
