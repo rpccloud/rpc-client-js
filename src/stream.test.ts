@@ -453,8 +453,8 @@ describe("RPCStream tests", () => {
         expect(RPCStream["streamPosVersion"]).toStrictEqual(0)
         expect(RPCStream["streamPosLength"]).toStrictEqual(4)
         expect(RPCStream["streamPosCheckSum"]).toStrictEqual(8)
-        expect(RPCStream["streamPosCallbackID"]).toStrictEqual(38)
-        expect(RPCStream["streamPosBody"]).toStrictEqual(48)
+        expect(RPCStream["streamPosCallbackID"]).toStrictEqual(50)
+        expect(RPCStream["streamPosBody"]).toStrictEqual(60)
 
         expect(RPCStream["StreamWriteOK"]).toStrictEqual("")
         expect(RPCStream["StreamWriteOverflow"]).toStrictEqual(" overflows")
