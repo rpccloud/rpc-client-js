@@ -7,4 +7,4 @@ RPC client for javascript and typescript
 
 ## Usage
 
-coming soon
+coming soon ...
