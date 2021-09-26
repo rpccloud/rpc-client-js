@@ -1,5 +1,5 @@
 {
-    "name": "rpc-client-js",
+    "name": "rpccloud-client-js",
     "version": "0.0.2",
     "description": "rpc client for javascript and typescript",
     "main": "build/index.js",
