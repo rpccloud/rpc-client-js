@@ -456,6 +456,16 @@ describe("RPCStream tests", () => {
         expect(RPCStream["streamPosCallbackID"]).toStrictEqual(50)
         expect(RPCStream["streamPosBody"]).toStrictEqual(60)
 
+        expect(RPCStream.StreamKindConnectRequest).toStrictEqual(1)
+        expect(RPCStream.StreamKindConnectResponse).toStrictEqual(2)
+        expect(RPCStream.StreamKindPing).toStrictEqual(3)
+        expect(RPCStream.StreamKindPong).toStrictEqual(4)
+        expect(RPCStream.StreamKindRPCRequest).toStrictEqual(5)
+        expect(RPCStream.StreamKindRPCResponseOK).toStrictEqual(6)
+        expect(RPCStream.StreamKindRPCResponseError).toStrictEqual(7)
+        expect(RPCStream.StreamKindRPCBoardCast).toStrictEqual(8)
+        expect(RPCStream.StreamKindSystemErrorReport).toStrictEqual(9)
+
         expect(RPCStream["StreamWriteOK"]).toStrictEqual("")
         expect(RPCStream["StreamWriteOverflow"]).toStrictEqual(" overflows")
         expect(RPCStream["StreamWriteUnsupportedValue"])
@@ -558,6 +568,15 @@ describe("RPCStream tests", () => {
         }
     })
 
+    test("putBytesTo", () => {
+        const bytes = new Uint8Array([13, 14, 15, 16, 17, 18, 19, 20, 21, 22])
+        const v = new RPCStream()
+        expect(v.putBytesTo(bytes, 0)).toStrictEqual(false)
+        expect(v.putBytesTo(bytes, 100.2)).toStrictEqual(false)
+        expect(v.putBytesTo(bytes, 100)).toStrictEqual(true)
+        expect(v.getBuffer().slice(100)).toStrictEqual(bytes)
+    })
+
     test("peekByte", () => {
         const v = new RPCStream()
         for (let i = 1; i < 2048; i++) {
@@ -609,6 +628,18 @@ describe("RPCStream tests", () => {
     test("getVersion", () => {
         const v = new RPCStream()
         expect(v.getVersion()).toStrictEqual(RPCStream["streamVersion"])
+    })
+
+    test("getKind", () => {
+        const v = new RPCStream()
+        v.setKind(RPCStream.StreamKindPing)
+        expect(v.getKind()).toStrictEqual(RPCStream.StreamKindPing)
+    })
+
+    test("setKind", () => {
+        const v = new RPCStream()
+        v.setKind(RPCStream.StreamKindPing)
+        expect(v.getKind()).toStrictEqual(RPCStream.StreamKindPing)
     })
 
     test("buildStreamCheck", () => {

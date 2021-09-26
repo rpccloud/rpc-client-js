@@ -4,3 +4,7 @@
 [![codecov](https://codecov.io/gh/rpccloud/rpc-client-js/branch/master/graph/badge.svg)](https://codecov.io/gh/rpccloud/rpc-client-js)
 
 RPC client for javascript and typescript
+
+## Usage
+
+coming soon ...

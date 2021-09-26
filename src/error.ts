@@ -32,14 +32,18 @@ export class RPCError {
     }
 
     public getCode(): number {
-        return this.code
+        return this.code & 0xFFFFFF
     }
 
     public getMessage(): string {
         return this.message
     }
 
-    public addDebug(debug: string): RPCError {
+    public addDebug(debug: string | undefined): RPCError {
+        if (!debug) {
+            return this
+        }
+
         if (!this.message) {
             return new RPCError(this.code, debug)
         } else {
@@ -86,3 +90,63 @@ export class RPCError {
             this.message
     }
 }
+
+const generalErrorSeg = 0
+export const ErrStream = defineError(
+    ErrorType.Security,
+    generalErrorSeg | 1,
+    ErrorLevel.Warn,
+    "stream error",
+)
+
+// ErrUnsupportedValue ...
+export const ErrUnsupportedValue = defineError(
+    ErrorType.Develop,
+    generalErrorSeg | 2,
+    ErrorLevel.Error,
+    "",
+)
+
+const clientErrorSeg = 4 << 8
+export const ErrClientTimeout = defineError(
+    ErrorType.Net,
+    clientErrorSeg | 1,
+    ErrorLevel.Warn,
+    "",
+)
+
+export const ErrClientConfig = defineError(
+    ErrorType.Config,
+    clientErrorSeg | 2,
+    ErrorLevel.Warn,
+    "client config error",
+)
+
+const jsAdapterErrorSeg = 102 << 8
+export const ErrJSUnsupportedProtocol = defineError(
+    ErrorType.Net,
+    jsAdapterErrorSeg | 1,
+    ErrorLevel.Warn,
+    "",
+)
+
+export const ErrJSWebSocketWriteStream = defineError(
+    ErrorType.Net,
+    jsAdapterErrorSeg | 2,
+    ErrorLevel.Warn,
+    "",
+)
+
+export const ErrJSWebSocketOnError = defineError(
+    ErrorType.Net,
+    jsAdapterErrorSeg | 3,
+    ErrorLevel.Warn,
+    "",
+)
+
+export const ErrJSWebSocketDail = defineError(
+    ErrorType.Net,
+    jsAdapterErrorSeg | 4,
+    ErrorLevel.Warn,
+    "",
+)

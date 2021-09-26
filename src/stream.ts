@@ -12,9 +12,20 @@ import {Ieee754} from "./ieee754"
 import {stringToUTF8, utf8ToString} from "./utils"
 
 export class RPCStream {
+    public static readonly StreamKindConnectRequest = 1
+    public static readonly StreamKindConnectResponse = 2
+    public static readonly StreamKindPing = 3
+    public static readonly StreamKindPong = 4
+    public static readonly StreamKindRPCRequest = 5
+    public static readonly StreamKindRPCResponseOK = 6
+    public static readonly StreamKindRPCResponseError = 7
+    public static readonly StreamKindRPCBoardCast = 8
+    public static readonly StreamKindSystemErrorReport = 9
+
     private static readonly streamVersion = 1
 
     private static readonly streamPosVersion = 0
+    private static readonly streamPosKind = 2
     private static readonly streamPosLength = 4
     private static readonly streamPosCheckSum = 8
     private static readonly streamPosCallbackID = 50
@@ -90,7 +101,21 @@ export class RPCStream {
         this.writePos++
     }
 
-    private putBytes(value: Uint8Array): void {
+    public putBytesTo(value: Uint8Array, pos: number): boolean {
+        if (!Number.isSafeInteger(pos)) {
+            return false
+        }
+
+        if (pos + value.length < RPCStream.streamPosBody) {
+            return false
+        }
+
+        this.writePos = pos
+        this.putBytes(value)
+        return true
+    }
+
+    public putBytes(value: Uint8Array): void {
         this.enlarge(this.writePos + value.byteLength)
         for (const n of value) {
             this.data[this.writePos] = n
@@ -124,6 +149,14 @@ export class RPCStream {
 
     public getVersion(): number {
         return this.data[RPCStream.streamPosVersion]
+    }
+
+    public getKind(): number {
+        return this.data[RPCStream.streamPosKind]
+    }
+
+    public setKind(v: number) {
+        this.data[RPCStream.streamPosKind] = v
     }
 
     private getCheckSum(): Uint8Array {
