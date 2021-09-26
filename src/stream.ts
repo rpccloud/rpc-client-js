@@ -28,8 +28,8 @@ export class RPCStream {
     private static readonly streamPosKind = 2
     private static readonly streamPosLength = 4
     private static readonly streamPosCheckSum = 8
-    private static readonly streamPosCallbackID = 38
-    private static readonly streamPosBody = 48
+    private static readonly streamPosCallbackID = 50
+    private static readonly streamPosBody = 60
 
     public static readonly StreamWriteOK = ""
     public static readonly StreamWriteOverflow = " overflows"
