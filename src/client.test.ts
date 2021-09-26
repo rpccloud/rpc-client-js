@@ -6,8 +6,8 @@ import {
     ErrStream,
     ErrUnsupportedValue, RPCError,
 } from "./error"
-import {
-    __test__, Client,
+import Client, {
+    __test__,
     LogToScreenErrorStreamHub,
     parseResponseStream
 } from "./client"

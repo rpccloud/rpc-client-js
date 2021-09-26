@@ -182,7 +182,7 @@ class Subscription {
     }
 }
 
-export class Client implements IReceiver {
+export default class Client implements IReceiver {
     private static makeErrorResponseStream(
         err: RPCError,
         callbackID: number,
