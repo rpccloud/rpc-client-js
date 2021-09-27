@@ -88,7 +88,7 @@ export class WebSocketStreamConn implements IStreamConn {
             stream.buildStreamCheck()
             this.ws.send(stream.getBuffer())
             return true
-        } catch (e) {
+        } catch (e: any) {
             this.receiver.OnConnError(
                 this, ErrJSWebSocketWriteStream.addDebug(e.toString()),
             )
@@ -185,7 +185,7 @@ export class ClientAdapter {
                     .addDebug(this.stack),
             )
             return null
-        } catch (e) {
+        } catch (e: any) {
             this.receiver.OnConnError(
                 null, ErrJSWebSocketDail.addDebug(e.toString()),
             )

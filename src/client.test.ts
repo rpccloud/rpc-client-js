@@ -566,7 +566,7 @@ describe("Client tests", () => {
         let errCount = 0
         try {
             await v.send(100, "#.user:Sleep")
-        } catch (e) {
+        } catch (e: any) {
             expect(e.toString().startsWith(
                 ErrClientTimeout.addDebug("#.user:Sleep timeout").toString(),
             )).toStrictEqual(true)
@@ -853,7 +853,7 @@ describe("Client tests", () => {
         v.setErrorHub(null)
         try {
             await v.send(100, "#.test:Timeout")
-        } catch (e) {
+        } catch (e: any) {
             expect(e.getMessage().includes("Client.send"))
                 .toStrictEqual(true)
             expect(e.getMessage().includes("client.test.ts"))

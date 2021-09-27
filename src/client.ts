@@ -275,7 +275,7 @@ export default class Client implements IReceiver {
                     preValidItem.next = nextItem
                 }
 
-                if (item == this.preSendTail) {
+                if (item === this.preSendTail) {
                     this.preSendTail = preValidItem
                 }
 
@@ -337,7 +337,7 @@ export default class Client implements IReceiver {
             if (findFree < channelSize) {
                 // remove sendItem from linked list
                 const item = this.preSendHead
-                if (item == this.preSendTail) {
+                if (item === this.preSendTail) {
                     this.preSendHead = null
                     this.preSendTail = null
                 } else {
@@ -443,7 +443,7 @@ export default class Client implements IReceiver {
         if (this.conn === null && streamConn !== null) {
             this.conn = streamConn
 
-            if (callbackID != 0) {
+            if (callbackID !== 0) {
                 this.OnConnError(streamConn, ErrStream)
             } else if (stream.getKind() !== RPCStream.StreamKindConnectResponse) {
                 this.OnConnError(streamConn, ErrStream)
@@ -462,7 +462,7 @@ export default class Client implements IReceiver {
                     && ok5 && heartbeatTimeout.toNumber() > 0
                     && stream.isReadFinish()
                 ) {
-                    if (sessionString != this.sessionString) {
+                    if (sessionString !== this.sessionString) {
                         // new session
                         this.sessionString = sessionString
 
@@ -498,7 +498,7 @@ export default class Client implements IReceiver {
             case RPCStream.StreamKindRPCResponseOK:
                 if (this.channels !== null && this.channels.length > 0) {
                     const channel = this.channels[callbackID % this.channels.length]
-                    if (channel.item && channel.sequence == callbackID) {
+                    if (channel.item && channel.sequence === callbackID) {
                         channel.free(stream)
                         this.tryToDeliverPreSendMessages()
                     }
@@ -507,7 +507,7 @@ export default class Client implements IReceiver {
             case RPCStream.StreamKindRPCResponseError:
                 if (this.channels !== null && this.channels.length > 0) {
                     const channel = this.channels[callbackID % this.channels.length]
-                    if (channel.item && channel.sequence == callbackID) {
+                    if (channel.item && channel.sequence === callbackID) {
                         let [, err] = parseResponseStream(stream)
                         // the err will not be null in any case
                         err = (err as RPCError).addDebug(channel.item.stack)

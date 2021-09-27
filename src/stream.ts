@@ -401,7 +401,7 @@ export class RPCStream {
             return RPCStream.StreamWriteOK
         } else {
             const bytes = value.getBytes()
-            if (bytes != null && bytes.byteLength == 8) {
+            if (bytes != null && bytes.byteLength === 8) {
                 this.putByte(11)
                 this.putBytes(bytes)
                 return RPCStream.StreamWriteOK
@@ -456,7 +456,7 @@ export class RPCStream {
 
         const length = v.byteLength
 
-        if (length == 0) {
+        if (length === 0) {
             this.putByte(192)
             return RPCStream.StreamWriteOK
         } else if (length < 63) {
@@ -867,7 +867,7 @@ export class RPCStream {
         let mapLen = 0
         let totalLen = 0
 
-        if (ch == 96) {
+        if (ch === 96) {
             if (this.canRead()) {
                 this.readPos++
                 return [new Map<string, RPCAny>(), true]
@@ -898,7 +898,7 @@ export class RPCStream {
                 }
                 ret.set(name, value)
             }
-            if (this.getReadPos() == readStart + totalLen) {
+            if (this.getReadPos() === readStart + totalLen) {
                 return [ret, true]
             }
         }
