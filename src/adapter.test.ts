@@ -329,7 +329,7 @@ describe("ClientAdapter tests", () => {
             expect(e).toStrictEqual(ErrJSWebSocketOnError.addDebug("error"))
             errCount++
         }
-        const v = new ClientAdapter("ws://127.0.0.1:8080", receiver, "")
+        const v = new ClientAdapter("ws://127.0.0.1:65089", receiver, "")
 
         expect(v.open()).toStrictEqual(true)
         await sleep(4000)
