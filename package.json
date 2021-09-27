@@ -1,6 +1,6 @@
 {
     "name": "rpccloud-client-js",
-    "version": "0.0.10",
+    "version": "0.0.11",
     "description": "rpc client for javascript and typescript",
     "main": "build/client.js",
     "types": "build/client.d.ts",
