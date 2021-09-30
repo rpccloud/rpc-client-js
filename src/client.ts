@@ -15,6 +15,8 @@ export function parseResponseStream(
     stream: RPCStream,
 ): [RPCAny, RPCError | null] {
     if (stream) {
+        stream.setReadPos(RPCStream.streamPosBody)
+
         switch (stream.getKind()) {
         case RPCStream.StreamKindRPCResponseOK: {
             const [v, ok] = stream.read()
