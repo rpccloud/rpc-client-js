@@ -146,6 +146,49 @@ export function toRPCMap(value: any): RPCMap {
     return ret
 }
 
+export function toObject(v: RPCAny): any {
+    if (v === undefined) {
+        return v
+    }
+
+    if (v === null) {
+        return v
+    }
+
+    switch (typeof v) {
+    case "boolean":
+        return v
+    case "string":
+        return v
+    case "object":
+        if (v instanceof RPCInt64) {
+            return v.toNumber()
+        } else if (v instanceof RPCUint64) {
+            return v.toNumber()
+        } else if (v instanceof RPCFloat64) {
+            return v.toNumber()
+        } else if (v instanceof Uint8Array) {
+            return v
+        } else if (v instanceof Array) {
+            let ret = []
+            for (let it of v) {
+                ret.push(toObject(it))
+            }
+            return ret
+        } else if (v instanceof Map) {
+            let ret: any = {}
+            for (const [key, value] of v) {
+                ret[key] = toObject(value)
+            }
+            return ret
+        } else {
+            return v
+        }
+    default:
+        return v
+    }
+}
+
 export type RPCString = string
 
 export type RPCBytes = Uint8Array
