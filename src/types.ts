@@ -170,13 +170,13 @@ export function toObject(v: RPCAny): any {
         } else if (v instanceof Uint8Array) {
             return v
         } else if (v instanceof Array) {
-            let ret = []
-            for (let it of v) {
+            const ret = []
+            for (const it of v) {
                 ret.push(toObject(it))
             }
             return ret
         } else if (v instanceof Map) {
-            let ret: any = {}
+            const ret: any = {}
             for (const [key, value] of v) {
                 ret[key] = toObject(value)
             }
