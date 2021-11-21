@@ -876,15 +876,6 @@ describe("RPCStream tests", () => {
         }
     });
 
-    test("putBytesTo", () => {
-        const bytes = new Uint8Array([13, 14, 15, 16, 17, 18, 19, 20, 21, 22]);
-        const v = new RPCStream();
-        expect(v.putBytesTo(bytes, 0)).toStrictEqual(false);
-        expect(v.putBytesTo(bytes, 100.2)).toStrictEqual(false);
-        expect(v.putBytesTo(bytes, 100)).toStrictEqual(true);
-        expect(v.getBuffer().slice(100)).toStrictEqual(bytes);
-    });
-
     test("peekByte", () => {
         const v = new RPCStream();
         for (let i = 1; i < 2048; i++) {
@@ -1011,13 +1002,9 @@ describe("RPCStream tests", () => {
         const v = new RPCStream();
 
         for (let i = 0; i < 4096; i++) {
-            if (i < RPCStream["streamPosBody"]) {
-                expect(v.setWritePos(i)).toStrictEqual(false);
-            } else {
-                expect(v.setWritePos(i)).toStrictEqual(true);
-                expect(v.getWritePos()).toStrictEqual(i);
-                expect(v["data"].byteLength >= i).toStrictEqual(true);
-            }
+            v.setWritePos(i);
+            expect(v.getWritePos()).toStrictEqual(i);
+            expect(v["data"].byteLength >= i).toStrictEqual(true);
         }
     });
 

@@ -42,6 +42,7 @@ export class WebSocketStreamConn implements IStreamConn {
     private status: number;
     private receiver: IReceiver;
     private activeTimeMS: number;
+    private stream?: RPCStream;
 
     public constructor(ws: WebSocket, receiver: IReceiver, stack?: string) {
         ws.binaryType = "arraybuffer";
@@ -50,16 +51,22 @@ export class WebSocketStreamConn implements IStreamConn {
         this.receiver = receiver;
         this.activeTimeMS = getTimeNowMS();
         ws.onmessage = (event?: MessageEvent) => {
-            if (event?.data instanceof ArrayBuffer) {
-                const stream: RPCStream = new RPCStream();
-                stream.setWritePos(0);
-                if (stream.putBytesTo(new Uint8Array(event.data), 0)) {
-                    if (stream.checkStream()) {
-                        this.activeTimeMS = getTimeNowMS();
-                        receiver.OnConnReadStream(this, stream);
-                    } else {
-                        receiver.OnConnError(this, ErrStream);
-                    }
+            if (event?.data instanceof ArrayBuffer && this.stream) {
+                this.stream.putBytes(new Uint8Array(event.data));
+                const streamLength = this.stream.getLength();
+                const writePos = this.stream.getWritePos();
+
+                if (writePos < streamLength) {
+                    // wait for next stream
+                } else if (
+                    writePos === streamLength &&
+                    this.stream.checkStream()
+                ) {
+                    this.activeTimeMS = getTimeNowMS();
+                    const stream = this.stream;
+                    this.stream = new RPCStream();
+                    this.stream.setWritePos(0);
+                    receiver.OnConnReadStream(this, stream);
                 } else {
                     receiver.OnConnError(this, ErrStream);
                 }
@@ -69,9 +76,12 @@ export class WebSocketStreamConn implements IStreamConn {
         };
         ws.onopen = () => {
             this.status = WebSocketStreamConn.StatusOpened;
+            this.stream = new RPCStream();
+            this.stream.setWritePos(0);
             receiver.OnConnOpen(this);
         };
         ws.onclose = () => {
+            this.stream = undefined;
             receiver.OnConnClose(this);
             this.status = WebSocketStreamConn.StatusClosed;
         };

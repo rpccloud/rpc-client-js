@@ -102,20 +102,6 @@ export class RPCStream {
         this.writePos++;
     }
 
-    public putBytesTo(value: Uint8Array, pos: number): boolean {
-        if (!Number.isSafeInteger(pos)) {
-            return false;
-        }
-
-        if (pos + value.length < RPCStream.streamPosBody) {
-            return false;
-        }
-
-        this.writePos = pos;
-        this.putBytes(value);
-        return true;
-    }
-
     public putBytes(value: Uint8Array): void {
         this.enlarge(this.writePos + value.byteLength);
         for (const n of value) {
@@ -144,7 +130,7 @@ export class RPCStream {
         return new Uint8Array(0);
     }
 
-    private getLength(): number {
+    public getLength(): number {
         return this.getUint32(RPCStream.streamPosLength)[0];
     }
 
@@ -213,14 +199,9 @@ export class RPCStream {
         return this.writePos;
     }
 
-    public setWritePos(writePos: number): boolean {
-        if (writePos >= RPCStream.streamPosBody) {
-            this.enlarge(writePos);
-            this.writePos = writePos;
-            return true;
-        } else {
-            return false;
-        }
+    public setWritePos(writePos: number): void {
+        this.enlarge(writePos);
+        this.writePos = writePos;
     }
 
     public getBuffer(): Uint8Array {

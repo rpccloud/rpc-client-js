@@ -164,8 +164,10 @@ describe("WebSocketStreamConn tests", () => {
         };
 
         /* eslint-disable @typescript-eslint/no-explicit-any */
+        const onOpen = ws.onopen as any;
         const onMessage = ws.onmessage as any;
         /* eslint-enable @typescript-eslint/no-explicit-any */
+        onOpen();
         onMessage({ data: arrayBuffer } as MessageEvent);
         expect(callbackCount).toStrictEqual(1);
         v.close();
