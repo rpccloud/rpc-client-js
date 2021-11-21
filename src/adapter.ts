@@ -85,6 +85,7 @@ export class WebSocketStreamConn implements IStreamConn {
     }
 
     public writeStream(stream: RPCStream): boolean {
+        /* eslint-disable @typescript-eslint/no-explicit-any */
         try {
             stream.buildStreamCheck();
             this.ws.send(stream.getBuffer());
@@ -96,6 +97,7 @@ export class WebSocketStreamConn implements IStreamConn {
             );
             return false;
         }
+        /* eslint-enable @typescript-eslint/no-explicit-any */
     }
 
     public close(): boolean {
@@ -174,6 +176,7 @@ export class ClientAdapter {
     }
 
     private dial(): IStreamConn | null {
+        /* eslint-disable @typescript-eslint/no-explicit-any */
         try {
             const protocol = this.connectString.trim().split(":")[0];
 
@@ -196,5 +199,6 @@ export class ClientAdapter {
             );
             return null;
         }
+        /* eslint-enable @typescript-eslint/no-explicit-any */
     }
 }

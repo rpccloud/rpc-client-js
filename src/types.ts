@@ -150,6 +150,7 @@ export function toRPCMap(value: any): RPCMap {
     return ret;
 }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export function toObject(v: RPCAny): any {
     if (v === undefined) {
         return v;
@@ -192,6 +193,7 @@ export function toObject(v: RPCAny): any {
             return v;
     }
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 export type RPCString = string;
 
